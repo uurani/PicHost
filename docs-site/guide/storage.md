@@ -56,17 +56,53 @@ PicHost 支持 **本地磁盘** 与 **S3 兼容对象存储**（Cloudflare R2、
 ## 用量与筛选
 
 - 存储页展示各后端用量（本地扫描目录，对象存储查询 API）
-- 图库可按 **存储后端**、**上传来源** 筛选，支持网格/列表视图切换
+- 图库可按 **存储后端**、**上传来源** 筛选，支持网格/列表视图切换；点击图片打开详情弹窗（尺寸、存储路径、多格式链接复制）
 
-## 备份
+## 备份与迁移（v1.3.0+）
 
-请同时备份：
+存储页 **备份与迁移** 面板包含三张功能卡与下方 **最近任务** 列表：
 
-- `data/images/`（本地后端）
-- `data/pichost.db`
-- 各云桶中的对象
+| 能力 | 说明 |
+| ---- | ---- |
+| **创建站点备份** | 导出 `.phost.tar.gz`，含 `pichost.db` 与全部图片（含云存储中的对象）；展示预计体积与备份包含项 |
+| **从备份恢复** | 本地上传或选择 `data/backups/` 内已有包，预检后确认；可选跳过/覆盖冲突图片 |
+| **跨后端同步** | 在已配置后端间拷贝图片并更新索引；展示待迁移数量与体积，支持预检、删源、设默认 |
 
-从 v1.1.x 升级且存在 `data/blog/` 等并列目录时，见 [v1.2 迁移](./migration.md)。
+![备份与迁移](/screenshots/storage.png)
+
+- 导出文件保存在 `data/backups/`；后端同一时间仅允许一个进行中的备份/迁移任务
+- 任务列表支持分页，可下载导出包、查看恢复结果、重试失败的同步任务
+- 备份包 **不含** 云存储 Access Key / Secret Key，恢复后请在存储页重新填写
+- 未初始化实例可在 **setup** 页 **从备份恢复** 标签上传整站包（始终覆盖模式）
+
+![从备份恢复（setup）](/screenshots/setup-restore.png)
+
+### CLI
+
+```bash
+# 导出整站备份
+docker exec pichost backup-export
+
+# 从备份恢复（默认跳过冲突图片）
+docker exec pichost backup-restore /data/backups/pichost-xxx.phost.tar.gz
+docker exec pichost backup-restore /data/backups/pichost-xxx.phost.tar.gz --overwrite
+
+# 跨后端同步
+docker exec pichost storage-sync --from local --to s3-xxx --dry-run
+docker exec pichost storage-sync --from local --to s3-xxx --set-default
+```
+
+本地开发（项目根目录）：
+
+```bash
+npm run backup-export
+npm run backup-restore -- data/backups/pichost-xxx.phost.tar.gz
+npm run storage-sync -- --from local --to s3-xxx --dry-run
+```
+
+### 手动备份
+
+仍可同时备份 `data/images/`（本地后端）、`data/pichost.db` 与各云桶中的对象；推荐使用上文整站导出。
 
 ## 相关
 

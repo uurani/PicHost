@@ -34,7 +34,6 @@ const zhSidebar = [
     text: '升级',
     items: [
       { text: '更新日志', link: '/guide/changelog' },
-      { text: 'v1.2 迁移', link: '/guide/migration' },
       { text: '常见问题', link: '/guide/faq' }
     ]
   }
@@ -71,7 +70,6 @@ const enSidebar = [
     text: 'Upgrade',
     items: [
       { text: 'Changelog', link: '/en/guide/changelog' },
-      { text: 'v1.2 migration', link: '/en/guide/migration' },
       { text: 'FAQ', link: '/en/guide/faq' }
     ]
   }

@@ -29,6 +29,93 @@ const imageBaseUrl = ref('')
 const loading = ref(false)
 const domainSeparationConfirmOpen = ref(false)
 
+const setupMode = ref<'init' | 'restore'>('init')
+const restoreFile = ref<File | null>(null)
+const restoreFileInput = ref<HTMLInputElement | null>(null)
+const restoreLoading = ref(false)
+const restoreJobId = ref<string | null>(null)
+const restoreProgress = ref({ progress: 0, total: 0, message: '' })
+let restorePollTimer: ReturnType<typeof setInterval> | null = null
+
+function stopRestorePolling() {
+  if (restorePollTimer) {
+    clearInterval(restorePollTimer)
+    restorePollTimer = null
+  }
+}
+
+function pickRestoreFile() {
+  restoreFileInput.value?.click()
+}
+
+function onRestoreFileChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  restoreFile.value = input.files?.[0] ?? null
+  if (input) input.value = ''
+}
+
+async function pollRestoreJob(jobId: string) {
+  try {
+    const data = await $fetch<{ job: { status: string, progress: number, total: number, message: string, error: string | null } }>(
+      `/api/setup/restore/${jobId}`
+    )
+    restoreProgress.value = {
+      progress: data.job.progress,
+      total: data.job.total,
+      message: data.job.message
+    }
+    if (data.job.status === 'done') {
+      stopRestorePolling()
+      restoreLoading.value = false
+      toast.add({
+        title: t('setup.restoreSuccess'),
+        description: t('setup.restoreSecretsHint'),
+        color: 'success'
+      })
+      await router.replace('/')
+      return
+    }
+    if (data.job.status === 'failed') {
+      stopRestorePolling()
+      restoreLoading.value = false
+      toast.add({
+        title: t('setup.restoreFailed'),
+        description: data.job.error ?? data.job.message,
+        color: 'error'
+      })
+    }
+  } catch {
+    stopRestorePolling()
+    restoreLoading.value = false
+    toast.add({ title: t('setup.restoreFailed'), color: 'error' })
+  }
+}
+
+async function submitRestore() {
+  if (!restoreFile.value || restoreLoading.value) return
+  restoreLoading.value = true
+  try {
+    const form = new FormData()
+    form.append('file', restoreFile.value)
+    const data = await $fetch<{ job: { id: string } }>('/api/setup/restore', {
+      method: 'POST',
+      body: form
+    })
+    restoreJobId.value = data.job.id
+    restorePollTimer = setInterval(() => {
+      void pollRestoreJob(data.job.id)
+    }, 1500)
+    await pollRestoreJob(data.job.id)
+  } catch {
+    restoreLoading.value = false
+    toast.add({ title: t('setup.restoreFailed'), color: 'error' })
+  }
+}
+
+onUnmounted(() => {
+  stopRestorePolling()
+})
+
 const domainSeparationWouldActivate = computed(() =>
   willActivateDomainSeparation(
     domainSeparation.value,
@@ -149,7 +236,28 @@ async function performSubmit() {
         </div>
       </div>
 
+      <div class="mb-6 flex rounded-lg border border-default p-1">
+        <button
+          type="button"
+          class="flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors"
+          :class="setupMode === 'init' ? 'bg-primary text-inverted' : 'text-muted hover:text-default'"
+          @click="setupMode = 'init'"
+        >
+          {{ t('setup.modeInit') }}
+        </button>
+        <button
+          v-if="!isMigrate"
+          type="button"
+          class="flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors"
+          :class="setupMode === 'restore' ? 'bg-primary text-inverted' : 'text-muted hover:text-default'"
+          @click="setupMode = 'restore'"
+        >
+          {{ t('setup.modeRestore') }}
+        </button>
+      </div>
+
       <form
+        v-if="setupMode === 'init'"
         class="flex w-full flex-col gap-5"
         @submit.prevent="submit"
       >
@@ -269,6 +377,73 @@ async function performSubmit() {
           :disabled="!canSubmit"
         />
       </form>
+
+      <div
+        v-else
+        class="flex w-full flex-col gap-5"
+      >
+        <div class="space-y-1.5">
+          <label class="text-xs text-muted">{{ t('storage.backup.restoreUploadLabel') }}</label>
+          <button
+            type="button"
+            class="flex w-full flex-col items-center gap-1.5 rounded-lg border-2 border-dashed px-3 py-4 text-center transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+            :class="restoreFile
+              ? 'border-primary/50 bg-primary/5'
+              : 'border-warning/40 bg-warning/5 hover:border-warning/60 hover:bg-warning/10'"
+            :disabled="restoreLoading"
+            @click="pickRestoreFile"
+          >
+            <div
+              class="flex size-8 items-center justify-center rounded-full"
+              :class="restoreFile ? 'bg-primary/15 text-primary' : 'bg-warning/15 text-warning'"
+            >
+              <UIcon
+                :name="restoreFile ? 'i-lucide-check' : 'i-lucide-upload'"
+                class="size-4.5"
+              />
+            </div>
+            <span class="max-w-full truncate text-sm font-medium text-default">
+              {{ restoreFile?.name ?? t('storage.backup.restoreUpload') }}
+            </span>
+            <span
+              v-if="!restoreFile"
+              class="text-xs text-muted"
+            >
+              {{ t('storage.backup.restoreUploadHint') }}
+            </span>
+          </button>
+        </div>
+
+        <div class="rounded-lg bg-muted/15 px-3 py-2.5 text-xs leading-relaxed text-muted">
+          {{ t('setup.restoreHint') }}
+        </div>
+
+        <StorageBackupJobProgress
+          v-if="restoreLoading"
+          :message="restoreProgress.message || t('setup.restoreSubmit')"
+          :progress="restoreProgress.progress"
+          :total="restoreProgress.total"
+        />
+
+        <UButton
+          :label="t('setup.restoreSubmit')"
+          icon="i-lucide-upload"
+          size="lg"
+          block
+          class="w-full"
+          :loading="restoreLoading"
+          :disabled="!restoreFile"
+          @click="submitRestore"
+        />
+
+        <input
+          ref="restoreFileInput"
+          type="file"
+          accept=".phost.tar.gz,.tar.gz"
+          class="hidden"
+          @change="onRestoreFileChange"
+        >
+      </div>
     </div>
 
     <UModal

@@ -61,21 +61,21 @@ Recommended: run PicHost on origin; use **proxied DNS** (and optional **R2** sto
 - Always open admin on the **site hostname**, not mixed with `localhost`
 - See [Dual-domain separation](./domain-separation.md)
 
-## Undeletable gallery items after v1.2 upgrade?
+## Undeletable gallery items?
 
-Likely **orphan index** rows (no file on disk). Startup sync removes them on restart. See [v1.2 migration](./migration.md#step-2-startup-index-sync-automatic).
+Likely **orphan index** rows (no file on disk). Startup sync removes them on restart; you can also delete them from the gallery.
 
-## Do I still need `data/blog/` after migration?
+## How do I back up or migrate the full site?
 
-After `migrate --apply`, files live under `data/images/blog/`. Remove leftover empty dirs after backup if you like; dirs with non-image files are kept by the CLI.
+From v1.3.0, use **Storage → Backup & migration**, or CLI:
 
-## Object storage only — run migrate?
+```bash
+docker exec pichost backup-export
+docker exec pichost backup-restore /data/backups/pichost-xxx.phost.tar.gz
+docker exec pichost storage-sync --from local --to s3-xxx --dry-run
+```
 
-No. Skip the CLI; startup sync focuses on local `data/images/` scanning.
-
-## Replace old image URLs in posts?
-
-Use `data/mapping.json` from `migrate` preview. Keys are **storage paths**, not full legacy URLs. See [Migration](./migration.md#urls).
+Packages include the database and all images but **not** cloud storage secrets — re-enter them on the Storage page after restore. See [Storage → Backup & migration](./storage.md#backup--migration-v130).
 
 ## Skip login during development?
 

@@ -21,6 +21,53 @@ const deleteTarget = ref<StorageBackendItem | null>(null)
 const deleteConfirmName = ref('')
 const deleting = ref(false)
 
+const backupPanelRef = ref<{ applySyncDraft: (draft: { fromBackendId: string, toBackendId: string }) => void } | null>(null)
+
+function onMigrateIn(backend: StorageBackendItem) {
+  const defaultBackend = storageData.value?.backends.find(item => item.isDefault)
+  if (!defaultBackend || defaultBackend.id === backend.id) return
+  backupPanelRef.value?.applySyncDraft({
+    fromBackendId: defaultBackend.id,
+    toBackendId: backend.id
+  })
+}
+
+function onMigrateOut(backend: StorageBackendItem) {
+  const backends = storageData.value?.backends ?? []
+  if (backend.isDefault) {
+    const target = backends.find(item => !item.isDefault && item.enabled)
+    if (!target) return
+    backupPanelRef.value?.applySyncDraft({
+      fromBackendId: backend.id,
+      toBackendId: target.id
+    })
+    return
+  }
+
+  const defaultBackend = backends.find(item => item.isDefault)
+  if (!defaultBackend) return
+  backupPanelRef.value?.applySyncDraft({
+    fromBackendId: backend.id,
+    toBackendId: defaultBackend.id
+  })
+}
+
+function showMigrateIn(backend: StorageBackendItem): boolean {
+  const backends = storageData.value?.backends ?? []
+  return !backend.isDefault
+    && backend.enabled
+    && backends.some(item => item.isDefault)
+}
+
+function showMigrateOut(backend: StorageBackendItem): boolean {
+  const backends = storageData.value?.backends ?? []
+  if (backend.usage.count === 0) return false
+  if (backend.isDefault) {
+    return backends.some(item => !item.isDefault && item.enabled)
+  }
+  return backends.some(item => item.isDefault)
+}
+
 const defaultBackendName = computed(() => {
   const backend = storageData.value?.backends.find(item => item.isDefault)
   return backend?.name ?? t('storage.backendLocal')
@@ -297,13 +344,23 @@ watch(isAuthenticated, async (authed) => {
               :backend="backend"
               :env-override="storageData.envOverride"
               :busy="busyId === backend.id"
+              :show-migrate-in="showMigrateIn(backend)"
+              :show-migrate-out="showMigrateOut(backend)"
               @set-default="setDefault(backend)"
               @edit="openEdit(backend)"
               @test="testBackend(backend)"
               @toggle-enabled="toggleEnabled(backend)"
               @delete="confirmDelete(backend)"
+              @migrate-in="onMigrateIn(backend)"
+              @migrate-out="onMigrateOut(backend)"
             />
           </div>
+
+          <StorageBackupPanel
+            v-if="!storageData.envOverride"
+            ref="backupPanelRef"
+            :backends="storageData.backends"
+          />
 
           <StorageSupportedBackends />
         </template>

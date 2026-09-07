@@ -12,15 +12,19 @@ Welcome to the PicHost user guide. This site is the single source of truth; the 
 
 ## Screenshots
 
-**main** has no public demo. Below are current product screenshots (v1.2.5+).
+**main** has no public demo. Below are current product screenshots (v1.3.0+).
 
-| API | Gallery |
-| :-: | :-----: |
+| API | Gallery (detail) |
+| :-: | :--------------: |
 | ![API](/screenshots/api.png) | ![Gallery](/screenshots/gallery.png) |
 
 | Storage | Settings |
 | :-----: | :-------: |
 | ![Storage](/screenshots/storage.png) | ![Settings](/screenshots/settings-en.png) |
+
+| First-time setup | Restore from backup |
+| :--------------: | :-----------------: |
+| ![Setup](/screenshots/setup.png) | ![Setup restore](/screenshots/setup-restore.png) |
 
 | Activity log |
 | :----------: |

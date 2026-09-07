@@ -10,7 +10,7 @@ services:
       - "6892:6892"
     # 首次访问 Web 引导创建管理员，无需预先配置环境变量
     # 可选：environment 中设置 API_UPLOAD_TOKEN、ALLOWED_REFERER_HOSTS 等
-    # 运维：docker exec pichost reset-password | migrate [--apply] | slider | clear-domains [--site]
+    # 运维：docker exec pichost reset-password | slider | clear-domains | backup-export | backup-restore | storage-sync
     volumes:
       # 冒号左边改成 NAS 上的实际存图目录（飞牛示例：/vol1/1000/pichost-data）
       - ./data:/data

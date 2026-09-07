@@ -159,14 +159,11 @@ Version history and notable changes. The full log is also in the repo root [CHAN
 
 ### Changed
 
-- All images under `data/images/`; legacy `blog/` / `twikoo/` need migration
+- All images under `data/images/`; parallel top-level folders beside `images` are no longer used
 
 ### Added
 
-- CLI: `docker exec pichost migrate` / `migrate --apply`
 - Startup index sync (disk scan, legacy key normalization, orphan cleanup)
-
-See [v1.2 migration](./migration.md).
 
 ---
 

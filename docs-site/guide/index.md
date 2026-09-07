@@ -12,15 +12,19 @@
 
 ## 截图预览
 
-**main** 分支暂无公网演示，以下为当前产品界面（v1.2.5+）。
+**main** 分支暂无公网演示，以下为当前产品界面（v1.3.0+）。
 
-| API | 图库 |
+| API | 图库（详情） |
 | :-: | :-: |
 | ![API](/screenshots/api.png) | ![图库](/screenshots/gallery.png) |
 
 | 存储管理 | 设置与偏好 |
 | :------: | :--------: |
 | ![存储管理](/screenshots/storage.png) | ![设置与偏好](/screenshots/settings.png) |
+
+| 首次设置 | 从备份恢复 |
+| :------: | :--------: |
+| ![首次设置](/screenshots/setup.png) | ![从备份恢复](/screenshots/setup-restore.png) |
 
 | 操作日志 |
 | :------: |

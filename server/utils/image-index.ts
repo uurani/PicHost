@@ -369,6 +369,41 @@ function buildBackendFilterSql(
   return ' AND backend_id = ?'
 }
 
+export function getImageTotals(): { count: number, bytes: number } {
+  ensureStorageSchema()
+  const row = getDb().prepare(`
+    SELECT COUNT(*) AS count, COALESCE(SUM(size), 0) AS bytes
+    FROM images
+  `).get() as { count: number, bytes: number }
+  return { count: row.count, bytes: Number(row.bytes) }
+}
+
+export function listAllImageIndexRows(): ImageIndexRow[] {
+  ensureStorageSchema()
+  return getDb().prepare(`
+    SELECT key, backend_id, user_id, folder, original_name, content_type, size, uploaded_at
+    FROM images
+    ORDER BY key ASC
+  `).all() as unknown as ImageIndexRow[]
+}
+
+export function listImageIndexRowsByBackend(backendId: string): ImageIndexRow[] {
+  ensureStorageSchema()
+  return getDb().prepare(`
+    SELECT key, backend_id, user_id, folder, original_name, content_type, size, uploaded_at
+    FROM images
+    WHERE backend_id = ?
+    ORDER BY key ASC
+  `).all(backendId) as unknown as ImageIndexRow[]
+}
+
+export function updateImageBackendId(key: string, backendId: string): void {
+  ensureStorageSchema()
+  getDb().prepare(`
+    UPDATE images SET backend_id = ? WHERE key = ?
+  `).run(backendId, key)
+}
+
 export async function countImages(
   userFilter?: number | 'admin',
   backendId?: string

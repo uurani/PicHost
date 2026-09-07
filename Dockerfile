@@ -23,10 +23,16 @@ ENV NODE_ENV=production \
     DATA_DIR=/data
 
 COPY --from=build /app/.output ./.output
+COPY --from=build /app/server/utils ./server/utils
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/package.json ./package.json
 COPY server/cli/reset-password.mjs ./server/cli/reset-password.mjs
-COPY server/cli/migrate-to-single-images.mjs ./server/cli/migrate-to-single-images.mjs
 COPY server/cli/slider.mjs ./server/cli/slider.mjs
 COPY server/cli/clear-domains.mjs ./server/cli/clear-domains.mjs
+COPY server/cli/backup-cli-loader.mjs ./server/cli/backup-cli-loader.mjs
+COPY server/cli/backup-export.mjs ./server/cli/backup-export.mjs
+COPY server/cli/backup-restore.mjs ./server/cli/backup-restore.mjs
+COPY server/cli/storage-sync.mjs ./server/cli/storage-sync.mjs
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 

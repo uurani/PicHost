@@ -54,13 +54,48 @@ Copied links use **IMAGE_BASE_URL**. “Hide folder prefix” may shorten URLs; 
 ## Usage & gallery filter
 
 - Per-backend usage on the Storage page
-- Gallery filters by **storage backend** and **upload source**; grid/list view toggle
+- Gallery filters by **storage backend** and **upload source**; grid/list view toggle; click a thumbnail for the detail modal (dimensions, storage path, link formats)
 
-## Backup
+## Backup & migration (v1.3.0+)
 
-Back up `data/images/`, `data/pichost.db`, and bucket objects.
+The **Backup & migration** panel has three action cards and a paginated **Recent jobs** table below:
 
-Upgrading from v1.1.x with parallel folders: [v1.2 migration](./migration.md).
+| Feature | Description |
+| ------- | ------------- |
+| **Create site backup** | Export `.phost.tar.gz` with `pichost.db` and all images (including objects on cloud backends); shows estimated size and package contents |
+| **Restore from backup** | Upload locally or pick an existing package under `data/backups/`, preview, then confirm; skip or overwrite conflicting images |
+| **Cross-backend sync** | Copy images between configured backends and update the index; shows pending count/size, dry-run, optional delete-source and set-default |
+
+![Backup & migration](/screenshots/storage.png)
+
+- Exports are saved under `data/backups/`; only one backup/migration job may run at a time
+- Job list supports pagination; download exports, view restore summaries, retry failed sync jobs
+- Packages **do not** include cloud storage secrets — re-enter them on the Storage page after restore
+- Uninitialized instances can use the **Restore backup** tab on `/setup` (always overwrite mode)
+
+![Setup restore](/screenshots/setup-restore.png)
+
+### CLI
+
+```bash
+docker exec pichost backup-export
+docker exec pichost backup-restore /data/backups/pichost-xxx.phost.tar.gz
+docker exec pichost backup-restore /data/backups/pichost-xxx.phost.tar.gz --overwrite
+docker exec pichost storage-sync --from local --to s3-xxx --dry-run
+docker exec pichost storage-sync --from local --to s3-xxx --set-default
+```
+
+Local development (project root):
+
+```bash
+npm run backup-export
+npm run backup-restore -- data/backups/pichost-xxx.phost.tar.gz
+npm run storage-sync -- --from local --to s3-xxx --dry-run
+```
+
+### Manual backup
+
+You can still back up `data/images/`, `data/pichost.db`, and bucket objects directly; prefer the full-site export above.
 
 ## See also
 

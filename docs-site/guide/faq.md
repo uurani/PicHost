@@ -62,21 +62,21 @@ docker exec pichost clear-domains
 - 后台请用 **网站域名** 打开，不要用 `localhost` 混用
 - 见 [双域名分离](./domain-separation.md)
 
-## 升级 v1.2 后图库有删不掉的记录？
+## 图库有删不掉的记录？
 
-可能是 **孤儿索引**（有记录无文件）。重启后启动同步会自动清理；也可手动删除仅索引项。见 [v1.2 迁移](./migration.md#第二步启动时自动同步索引)。
+可能是 **孤儿索引**（有记录无文件）。重启后启动同步会自动清理；也可在图库中手动删除。
 
-## 遗留 `data/blog/` 目录还要吗？
+## 如何备份与迁移整站？
 
-执行 `migrate --apply` 后文件已迁入 `data/images/blog/`。若原目录只剩空壳或非图片文件，可自行备份后删除；迁移脚本不会删除仍含非图片文件的目录。
+v1.3.0 起在 **存储** 页使用「备份与迁移」面板，或 CLI：
 
-## 只用对象存储需要跑 migrate 吗？
+```bash
+docker exec pichost backup-export
+docker exec pichost backup-restore /data/backups/pichost-xxx.phost.tar.gz
+docker exec pichost storage-sync --from local --to s3-xxx --dry-run
+```
 
-不需要。图片在桶内时跳过 CLI；启动同步主要面向本地 `data/images/` 磁盘扫描。
-
-## 如何替换博客里的旧图片 URL？
-
-使用 `data/mapping.json`（`migrate` 预览时生成）批量替换旧 key。注意映射的是 **存储 key**，不是完整旧站 URL。见 [迁移指南](./migration.md#外链与直链)。
+备份包含数据库与全部图片，**不含** 云存储密钥；恢复后请在存储页重新填写。详见 [存储 → 备份与迁移](./storage.md#备份与迁移v130)。
 
 ## 开发时如何跳过登录？
 

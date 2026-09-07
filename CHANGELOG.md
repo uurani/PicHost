@@ -4,6 +4,24 @@
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-09-07
+
+### 新增
+
+- **站点备份**：存储页导出 `.phost.tar.gz`（含 `pichost.db` 与全部图片），支持下载与任务进度
+- **站点恢复**：存储页或 setup 未初始化时从备份包恢复，支持预检与跳过/覆盖冲突
+- **跨后端同步**：在已配置存储后端之间拷贝图片并更新索引；后端卡片快捷「迁入 / 迁出」
+- **任务中心**：`backup_jobs` 记录最近导出/恢复/同步任务，失败可重试；列表分页
+- 运维 CLI：`backup-export`、`backup-restore`、`storage-sync`（`docker exec pichost …`）
+
+### 移除
+
+- 遗留目录迁移 CLI `migrate` / `migrate-to-single-images.mjs`（由启动索引同步与整站备份恢复替代）
+
+### 文档
+
+- [存储](./docs-site/guide/storage.md) 补充备份与迁移说明；更新截图；移除 v1.2 迁移专页
+
 ## [1.2.8] - 2026-09-04
 
 ### 改进
@@ -119,7 +137,6 @@
 - CLI 迁移工具：`docker exec pichost migrate` / `migrate --apply`（`server/cli/migrate-to-single-images.mjs`）
 - 扫描 `data/` 下除 `images` 外所有顶层目录中的图片，输出 `data/mapping.json`
 - 启动时自动同步图片索引（扫描磁盘、归一化遗留 key、清理孤儿记录），并打印同步日志
-- 迁移文档：[文档站 · v1.2 迁移](https://o96u.github.io/PicHost/guide/migration)
 
 ### 改进
 

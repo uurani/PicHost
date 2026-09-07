@@ -33,9 +33,17 @@ See `docker-compose.yml` in the repository.
 ## First-time setup
 
 1. Open your instance URL (Docker default `http://<host>:6892`).
-2. Complete `/setup` with admin username and password.
+2. On `/setup`, choose **Create admin** or **Restore backup**:
+   - **Create admin** — username, password, optional registration and dual-domain options.
+   - **Restore backup** — upload a `.phost.tar.gz` full-site package (replaces current data; re-enter cloud storage secrets after restore).
 3. (Optional) Configure site URL, image URL, Referer rules — see [Environment variables](./configuration.md) and [Dual-domain separation](./domain-separation.md).
 4. Upload from the home page; use the top nav for **Gallery**, **Storage** (admin), **Settings**, and **API**.
+
+| Create admin | Restore from backup |
+| :----------: | :-----------------: |
+| ![Setup](/screenshots/setup.png) | ![Setup restore](/screenshots/setup-restore.png) |
+
+For an already-initialized instance, use [Storage → Backup & migration](./storage.md#backup--migration-v130) instead of `/setup`.
 
 ## Sign in
 
@@ -79,12 +87,6 @@ docker exec pichost clear-domains
 ```
 
 Local: `npm run clear-domains`. See [FAQ — Admin 404 after dual-domain setup](./faq.md#admin-404--locked-out-after-dual-domain-setup).
-
-## Upgrading to v1.2.0
-
-If `data/` has legacy top-level folders next to `images` (e.g. `blog/`, `twikoo/`), read the [v1.2 migration guide](./migration.md) first.
-
-Object-storage-only or files already under `data/images/` — pull the new image and restart.
 
 ## Next steps
 

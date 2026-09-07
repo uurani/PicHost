@@ -30,7 +30,6 @@ Open `http://localhost:3000/setup` to create the admin account. Data directory d
 | `npm run reset-password` | Reset password (optional username) |
 | `npm run slider` | Reset login verification to local slider |
 | `npm run clear-domains` | Clear site/image URL settings from DB (recover from dual-domain lockout) |
-| `npm run migrate` | Preview legacy dir migration (`-- --apply` to run) |
 
 ## Dev-only variables
 
@@ -53,4 +52,4 @@ npm run docs:build
 npm run docs:preview
 ```
 
-Sources live in `docs-site/`; screenshot sources are in `docs/screenshots/` (including `login.png`), copied to `docs-site/public/screenshots/` before build. Live docs: <https://o96u.github.io/PicHost/>
+Sources live in `docs-site/`; screenshot sources are in `docs/screenshots/` (including `login.png`, `setup.png`, `setup-restore.png`, etc.), copied to `docs-site/public/screenshots/` before build. Live docs: <https://o96u.github.io/PicHost/>

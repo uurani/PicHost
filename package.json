@@ -1,6 +1,6 @@
 {
   "name": "pichost",
-  "version": "1.2.8",
+  "version": "1.3.0",
   "description": "Self-hosted image hosting for your NAS / home server — Nuxt admin UI, local disk or S3-compatible storage, server-side WebP compression, referer protection, Twikoo/EasyImage compatible.",
   "homepage": "https://github.com/O96u/PicHost#readme",
   "repository": {
@@ -34,9 +34,11 @@
     "test:watch": "vitest",
     "start": "node .output/server/index.mjs",
     "reset-password": "node server/cli/reset-password.mjs",
-    "migrate": "node server/cli/migrate-to-single-images.mjs",
     "slider": "node server/cli/slider.mjs",
     "clear-domains": "node server/cli/clear-domains.mjs",
+    "backup-export": "node server/cli/backup-export.mjs",
+    "backup-restore": "node server/cli/backup-restore.mjs",
+    "storage-sync": "node server/cli/storage-sync.mjs",
     "docs:prepare": "node docs-site/copy-screenshots.mjs",
     "docs:dev": "npm run docs:prepare && vitepress dev docs-site",
     "docs:build": "npm run docs:prepare && vitepress build docs-site",
@@ -50,11 +52,13 @@
     "cap-widget": "^0.1.57",
     "nuxt": "^4.4.8",
     "sharp": "^0.35.3",
-    "tailwindcss": "^4.3.1"
+    "tailwindcss": "^4.3.1",
+    "tar": "^7.5.22"
   },
   "devDependencies": {
     "@nuxt/eslint": "^1.16.0",
     "@types/node": "^22.15.0",
+    "@types/tar": "^6.1.13",
     "eslint": "^10.6.0",
     "mermaid": "^11.17.2",
     "typescript": "^6.0.3",

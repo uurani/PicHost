@@ -159,14 +159,11 @@ PicHost 版本历史与重要变更说明。完整记录亦见仓库根目录 [C
 
 ### 变更
 
-- 图片统一存放在 `data/images/`；遗留 `blog/`、`twikoo/` 等并列目录需迁移
+- 图片统一存放在 `data/images/`；不再使用与 `images` 并列的顶层目录
 
 ### 新增
 
-- CLI：`docker exec pichost migrate` / `migrate --apply`
 - 启动时自动同步图片索引（扫描磁盘、归一化遗留 key、清理孤儿记录）
-
-详见 [v1.2 迁移](./migration.md)。
 
 ---
 

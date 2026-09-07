@@ -36,8 +36,27 @@ export interface ActivityLogInput {
 }
 
 let db: DatabaseSync | null = null
+let dbReplacing = false
+
+export function isDbReplacing(): boolean {
+  return dbReplacing
+}
+
+export function setDbReplacing(value: boolean): void {
+  dbReplacing = value
+}
+
+export function closeDb(): void {
+  if (db) {
+    db.close()
+    db = null
+  }
+}
 
 export function getDb(): DatabaseSync {
+  if (dbReplacing) {
+    throw new Error('DATABASE_REPLACE_IN_PROGRESS')
+  }
   if (db) return db
 
   const dataDir = getDataDir()

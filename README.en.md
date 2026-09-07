@@ -31,20 +31,25 @@
 
 **main** has no public demo. **cloudflare** branch live demo: [pic.roven.cc](https://pic.roven.cc)
 
-| API | Gallery |
-| :--: | :-----: |
+| API | Gallery (detail) |
+| :--: | :--------------: |
 | ![API](docs/screenshots/api.png) | ![Gallery](docs/screenshots/gallery.png) |
 
 | Storage | Settings |
 | :-----: | :-------: |
 | ![Storage](docs/screenshots/storage.png) | ![Settings](docs/screenshots/settings-en.png) |
 
+| First-time setup | Restore from backup |
+| :--------------: | :-----------------: |
+| ![Setup](docs/screenshots/setup.png) | ![Setup restore](docs/screenshots/setup-restore.png) |
+
 ## Features
 
 - **Drag, click, or Ctrl+V paste** — server-side WebP, Referer hotlink protection
 - **Multi-user** — login with slider, Turnstile, or Cap verification; optional registration; users see only their images
 - **Multi-backend storage** — local disk + S3-compatible (R2 / COS / OSS / AWS); hybrid `proxy` / `public` URLs
-- **Gallery** — browse, search, filter by storage/source, grid/list views, batch delete; stats overview and source breakdown
+- **Gallery** — browse, search, filter by storage/source, grid/list views, batch delete; stats overview and source breakdown; image detail modal with link formats
+- **Backup & migration** — full-site export/restore (`.phost.tar.gz`), cross-backend sync; restore from backup on uninitialized `/setup`
 - **API & Twikoo** — global / per-user tokens; `POST /api/index.php` compatible
 - **Zero-config Docker** — first-run web wizard, no secrets upfront
 

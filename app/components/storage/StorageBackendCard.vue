@@ -5,6 +5,8 @@ const props = defineProps<{
   backend: StorageBackendItem
   envOverride?: boolean
   busy?: boolean
+  showMigrateIn?: boolean
+  showMigrateOut?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -13,6 +15,8 @@ const emit = defineEmits<{
   test: []
   toggleEnabled: []
   delete: []
+  migrateIn: []
+  migrateOut: []
 }>()
 
 const { t } = useI18n()
@@ -128,6 +132,28 @@ function canDelete() {
         color="neutral"
         :disabled="actionsDisabled"
         @click="emit('setDefault')"
+      />
+      <UButton
+        v-if="showMigrateIn"
+        :label="t('storage.backup.migrateIn')"
+        :title="t('storage.backup.migrateInHint')"
+        icon="i-lucide-import"
+        size="sm"
+        variant="outline"
+        color="neutral"
+        :disabled="actionsDisabled"
+        @click="emit('migrateIn')"
+      />
+      <UButton
+        v-if="showMigrateOut"
+        :label="t('storage.backup.migrateOut')"
+        :title="t('storage.backup.migrateOutHint')"
+        icon="i-lucide-arrow-up-from-line"
+        size="sm"
+        variant="outline"
+        color="neutral"
+        :disabled="actionsDisabled"
+        @click="emit('migrateOut')"
       />
       <UButton
         v-if="canEdit()"
