@@ -1,4 +1,5 @@
 import { requireUserAuth } from '../../utils/access'
+import { logActivity } from '../../utils/activity-log'
 import { createApiError } from '../../utils/api-error'
 import { getUserAutoDeletePolicy, setUserAutoDeletePolicy } from '../../utils/db'
 import { MAX_AUTO_DELETE_DAYS, parseAutoDeleteDays } from '../../utils/env'
@@ -28,6 +29,16 @@ export default defineEventHandler(async (event) => {
   }
 
   const policy = getUserAutoDeletePolicy(user.id)
+
+  if (body.autoDeleteDays !== undefined) {
+    logActivity(event, {
+      action: 'settings',
+      key: 'user/settings',
+      originalName: '上传偏好',
+      userId: user.id
+    })
+  }
+
   return {
     autoDeleteDays: policy.days
   }

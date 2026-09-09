@@ -1,6 +1,6 @@
 {
   "name": "pichost",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Self-hosted image hosting for your NAS / home server — Nuxt admin UI, local disk or S3-compatible storage, server-side WebP compression, referer protection, Twikoo/EasyImage compatible.",
   "homepage": "https://github.com/O96u/PicHost#readme",
   "repository": {

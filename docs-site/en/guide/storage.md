@@ -18,6 +18,8 @@ PicHost supports **local disk** and **S3-compatible object storage** (Cloudflare
 
 All **keys** start with `images/`. The upload API does **not** accept a `folder` parameter.
 
+**Classification** uses per-user **tags** in SQLite (`tags` / `image_tags`); disk paths are unchanged. See [API](./api.md#6-tags).
+
 ## Adding a backend
 
 1. Sign in as admin → **Storage** → **Add backend**.
@@ -54,7 +56,9 @@ Copied links use **IMAGE_BASE_URL**. “Hide folder prefix” may shorten URLs; 
 ## Usage & gallery filter
 
 - Per-backend usage on the Storage page
-- Gallery filters by **storage backend** and **upload source**; grid/list view toggle; click a thumbnail for the detail modal (dimensions, storage path, link formats)
+- Gallery filters by **storage backend**, **upload source**, and **tags**; grid/list view toggle; click a thumbnail for the detail modal (dimensions, storage path, tags, link formats)
+
+![Gallery grid](/screenshots/gallery.png) ![Gallery list](/screenshots/gallery-list.png) ![Image detail](/screenshots/gallery-detail.png)
 
 ## Backup & migration (v1.3.0+)
 

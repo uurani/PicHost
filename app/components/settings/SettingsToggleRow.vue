@@ -9,7 +9,7 @@ const model = defineModel<boolean>({ required: true })
 </script>
 
 <template>
-  <div class="flex items-start justify-between gap-4 px-4 py-4 sm:px-5">
+  <div class="flex items-start justify-between gap-4 py-4">
     <div class="min-w-0 flex-1 pr-2">
       <p class="text-sm font-medium text-highlighted">
         <slot name="title">

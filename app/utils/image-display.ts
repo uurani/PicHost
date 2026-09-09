@@ -22,3 +22,7 @@ export function formatImageDimensions(width: number | null, height: number | nul
   if (!width || !height) return null
   return `${width} × ${height} px`
 }
+
+export function buildImageBbcode(url: string): string {
+  return `[img]${url}[/img]`
+}

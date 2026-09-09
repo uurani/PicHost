@@ -19,6 +19,7 @@ import {
   searchImages as searchImagesFromIndex
 } from './image-index'
 import { DEFAULT_FOLDER, toCanonicalImageKey, validateImageKey } from './image-key'
+import type { TagFilterInput } from './tags'
 import {
   getActiveBackend,
   getBackendForKey
@@ -171,15 +172,17 @@ export async function listImageKeys(): Promise<string[]> {
 
 export async function countImages(
   userFilter?: number | 'admin',
-  backendId?: string
+  backendId?: string,
+  tagFilter?: TagFilterInput
 ): Promise<number> {
-  return countImagesFromIndex(userFilter, backendId)
+  return countImagesFromIndex(userFilter, backendId, tagFilter)
 }
 
 export async function getFolderStorageStats(
-  userFilter?: number | 'admin'
+  userFilter?: number | 'admin',
+  tagFilter?: TagFilterInput
 ): Promise<FolderStorageStat[]> {
-  return getFolderStorageStatsFromIndex(userFilter)
+  return getFolderStorageStatsFromIndex(userFilter, tagFilter)
 }
 
 export async function listFoldersForUser(
@@ -188,7 +191,10 @@ export async function listFoldersForUser(
   return listFoldersForUserFromIndex(userFilter)
 }
 
-export async function getUserScopedStorageStats(userId: number): Promise<{
+export async function getUserScopedStorageStats(
+  userId: number,
+  tagFilter?: TagFilterInput
+): Promise<{
   storedCount: number
   uploadBytesTotal: number
   uploadToday: number
@@ -197,7 +203,7 @@ export async function getUserScopedStorageStats(userId: number): Promise<{
   uploadLastMonth: number
   byFolder: FolderStorageStat[]
 }> {
-  return getUserScopedStorageStatsFromIndex(userId)
+  return getUserScopedStorageStatsFromIndex(userId, tagFilter)
 }
 
 export async function listImages(options: {
@@ -207,6 +213,7 @@ export async function listImages(options: {
   backendId?: string
   contentType?: string
   uploadSource?: 'web' | 'api'
+  tagFilter?: TagFilterInput
 }): Promise<PaginatedResult<StoredImage>> {
   return listImagesFromIndex(options)
 }
@@ -219,6 +226,7 @@ export async function searchImages(options: {
   backendId?: string
   contentType?: string
   uploadSource?: 'web' | 'api'
+  tagFilter?: TagFilterInput
 }): Promise<PaginatedResult<StoredImage>> {
   return searchImagesFromIndex(options)
 }

@@ -7,9 +7,9 @@ import {
 } from '../../utils/constants'
 import { createApiError } from '../../utils/api-error'
 import { getUploadSourcesForKeys, listUserIdUsernameMap } from '../../utils/db'
-import { mapStoredImageToItem } from '../../utils/image-response'
+import { mapStoredImageToItem, attachTagsToImageItems } from '../../utils/image-response'
 import { listStorageBackendNameMap } from '../../utils/storage-backends'
-import { readBackendIdQuery, readContentTypeQuery, readUploadSourceQuery } from '../../utils/image-query'
+import { readBackendIdQuery, readContentTypeQuery, readTagFilterQuery, readUploadSourceQuery } from '../../utils/image-query'
 import { searchImages } from '../../utils/storage'
 
 export default defineEventHandler(async (event) => {
@@ -48,6 +48,10 @@ export default defineEventHandler(async (event) => {
   if (uploadSource === null) {
     createApiError(event, 'INVALID_REQUEST', '无效的上传来源', 400)
   }
+  const tagFilter = readTagFilterQuery(query)
+  if (tagFilter === null) {
+    createApiError(event, 'INVALID_REQUEST', '无效的标签筛选参数', 400)
+  }
   const userFilter = await getImageUserFilter(event)
 
   const result = await searchImages({
@@ -57,15 +61,18 @@ export default defineEventHandler(async (event) => {
     userFilter,
     backendId,
     contentType,
-    uploadSource
+    uploadSource,
+    tagFilter
   })
 
   const user = await getCurrentUser(event)
   const ownerMap = user?.role === 'admin' ? listUserIdUsernameMap() : undefined
   const backendMap = listStorageBackendNameMap()
   const sourceMap = getUploadSourcesForKeys(result.items.map(item => item.key))
-  const items = result.items.map(stored =>
-    mapStoredImageToItem(event, stored, { ownerMap, backendMap, sourceMap })
+  const items = attachTagsToImageItems(
+    result.items.map(stored =>
+      mapStoredImageToItem(event, stored, { ownerMap, backendMap, sourceMap })
+    )
   )
 
   items.sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt))

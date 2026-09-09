@@ -4,8 +4,10 @@ import { join } from 'node:path'
 import { getDataDir } from './data-dir'
 import { logException } from './logger'
 
-export type LogAction = 'upload' | 'delete'
-export type LogSource = 'web' | 'api'
+export type LogAction = 'upload' | 'delete' | 'login' | 'edit' | 'settings' | 'tags'
+export type LogSource = 'web' | 'api' | 'admin'
+
+export type LogStatus = 'success' | 'failure'
 
 export interface ActivityLogRow {
   id: number
@@ -20,6 +22,8 @@ export interface ActivityLogRow {
   backend_id: string | null
   backend_name: string | null
   backend_type: string | null
+  ip_address: string | null
+  status: LogStatus
   created_at: string
 }
 
@@ -32,6 +36,8 @@ export interface ActivityLogInput {
   source: LogSource
   userId?: number | null
   backendId?: string | null
+  ipAddress?: string | null
+  status?: LogStatus
   createdAt?: string
 }
 
@@ -67,12 +73,12 @@ export function getDb(): DatabaseSync {
     PRAGMA journal_mode = WAL;
     CREATE TABLE IF NOT EXISTS activity_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      action TEXT NOT NULL CHECK(action IN ('upload', 'delete')),
+      action TEXT NOT NULL,
       key TEXT NOT NULL,
       original_name TEXT NOT NULL,
       size INTEGER NOT NULL DEFAULT 0,
       content_type TEXT NOT NULL DEFAULT '',
-      source TEXT NOT NULL CHECK(source IN ('web', 'api')),
+      source TEXT NOT NULL,
       created_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at
@@ -103,6 +109,62 @@ export function getDb(): DatabaseSync {
   `)
   migrateSchema(db)
   return db
+}
+
+function migrateActivityLogSchema(database: DatabaseSync): void {
+  const migrated = database.prepare(`
+    SELECT 1 FROM settings WHERE key = 'activity_logs_schema_v2'
+  `).get()
+  if (migrated) return
+
+  database.exec('BEGIN')
+  try {
+    database.exec(`
+      CREATE TABLE activity_logs_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        action TEXT NOT NULL,
+        key TEXT NOT NULL,
+        original_name TEXT NOT NULL,
+        size INTEGER NOT NULL DEFAULT 0,
+        content_type TEXT NOT NULL DEFAULT '',
+        source TEXT NOT NULL,
+        user_id INTEGER,
+        backend_id TEXT,
+        ip_address TEXT,
+        status TEXT NOT NULL DEFAULT 'success',
+        created_at TEXT NOT NULL
+      )
+    `)
+    database.exec(`
+      INSERT INTO activity_logs_new (
+        id, action, key, original_name, size, content_type, source,
+        user_id, backend_id, ip_address, status, created_at
+      )
+      SELECT
+        id, action, key, original_name, size, content_type, source,
+        user_id, backend_id, ip_address, COALESCE(status, 'success'), created_at
+      FROM activity_logs
+    `)
+    database.exec('DROP TABLE activity_logs')
+    database.exec('ALTER TABLE activity_logs_new RENAME TO activity_logs')
+    database.exec(`
+      CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at
+        ON activity_logs(created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_activity_logs_action_created
+        ON activity_logs(action, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_activity_logs_user_created
+        ON activity_logs(user_id, created_at DESC);
+    `)
+    const now = new Date().toISOString()
+    database.prepare(`
+      INSERT INTO settings (key, value, updated_at)
+      VALUES ('activity_logs_schema_v2', '1', ?)
+    `).run(now)
+    database.exec('COMMIT')
+  } catch (error) {
+    database.exec('ROLLBACK')
+    throw error
+  }
 }
 
 function migrateSchema(database: DatabaseSync): void {
@@ -161,9 +223,43 @@ function migrateSchema(database: DatabaseSync): void {
   if (!activityLogColumns.some(column => column.name === 'backend_id')) {
     database.exec('ALTER TABLE activity_logs ADD COLUMN backend_id TEXT')
   }
+  const activityLogColumnsAfter = database.prepare('PRAGMA table_info(activity_logs)').all() as Array<{
+    name: string
+  }>
+  if (!activityLogColumnsAfter.some(column => column.name === 'ip_address')) {
+    database.exec('ALTER TABLE activity_logs ADD COLUMN ip_address TEXT')
+  }
+  if (!activityLogColumnsAfter.some(column => column.name === 'status')) {
+    database.exec(`ALTER TABLE activity_logs ADD COLUMN status TEXT NOT NULL DEFAULT 'success'`)
+  }
 
   database.exec(`
     UPDATE activity_logs SET source = 'api' WHERE source = 'twikoo'
+  `)
+
+  migrateActivityLogSchema(database)
+
+  // tags schema (lazy import avoided — keep migration in tags.ts)
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS tags (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      color TEXT,
+      created_at TEXT NOT NULL,
+      UNIQUE(user_id, name),
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_tags_user_id ON tags(user_id);
+    CREATE TABLE IF NOT EXISTS image_tags (
+      image_key TEXT NOT NULL,
+      tag_id INTEGER NOT NULL,
+      PRIMARY KEY (image_key, tag_id),
+      FOREIGN KEY (image_key) REFERENCES images(key) ON DELETE CASCADE,
+      FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_image_tags_tag_id ON image_tags(tag_id);
+    CREATE INDEX IF NOT EXISTS idx_image_tags_image_key ON image_tags(image_key);
   `)
 }
 
@@ -448,8 +544,8 @@ export function insertActivityLog(input: ActivityLogInput): void {
     const createdAt = input.createdAt ?? new Date().toISOString()
     getDb().prepare(`
       INSERT INTO activity_logs
-        (action, key, original_name, size, content_type, source, user_id, backend_id, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (action, key, original_name, size, content_type, source, user_id, backend_id, ip_address, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       input.action,
       input.key,
@@ -459,6 +555,8 @@ export function insertActivityLog(input: ActivityLogInput): void {
       input.source,
       input.userId ?? null,
       input.backendId ?? null,
+      input.ipAddress ?? null,
+      input.status ?? 'success',
       createdAt
     )
   } catch (error) {
@@ -505,6 +603,8 @@ export function listActivityLogs(options: {
   folder?: string
   userId?: number
   search?: string
+  dateFrom?: string
+  dateTo?: string
 }): {
   items: ActivityLogRow[]
   total: number
@@ -542,6 +642,8 @@ export function listActivityLogs(options: {
       al.backend_id,
       sb.name AS backend_name,
       sb.type AS backend_type,
+      al.ip_address,
+      al.status,
       al.created_at
     FROM activity_logs al
     LEFT JOIN users u ON u.id = al.user_id
@@ -565,6 +667,8 @@ export function summarizeActivityLogs(options: {
   folder?: string
   userId?: number
   search?: string
+  dateFrom?: string
+  dateTo?: string
 }): {
   total: number
   upload: number
@@ -595,6 +699,8 @@ function buildActivityLogWhere(
     folder?: string
     userId?: number
     search?: string
+    dateFrom?: string
+    dateTo?: string
   },
   { includeAction = true }: { includeAction?: boolean } = {}
 ): { whereSql: string, params: Array<string | number> } {
@@ -617,9 +723,18 @@ function buildActivityLogWhere(
     where.push('al.user_id = ?')
     params.push(options.userId)
   }
+  if (options.dateFrom) {
+    where.push('al.created_at >= ?')
+    params.push(options.dateFrom)
+  }
+  if (options.dateTo) {
+    where.push('al.created_at < ?')
+    params.push(options.dateTo)
+  }
   if (options.search) {
-    where.push('al.original_name LIKE ?')
-    params.push(`%${options.search}%`)
+    where.push('(al.original_name LIKE ? OR al.key LIKE ? OR al.ip_address LIKE ?)')
+    const pattern = `%${options.search}%`
+    params.push(pattern, pattern, pattern)
   }
 
   return {
@@ -680,11 +795,11 @@ function countBySource(): Record<LogSource, number> {
     GROUP BY source
   `).all() as unknown as Array<{ source: LogSource, total: number }>
 
-  const result: Record<LogSource, number> = { web: 0, api: 0 }
+  const result: Record<LogSource, number> = { web: 0, api: 0, admin: 0 }
   for (const row of rows) {
     const raw = row.source as string
     const source = raw === 'twikoo' ? 'api' : row.source
-    if (source === 'web' || source === 'api') {
+    if (source === 'web' || source === 'api' || source === 'admin') {
       result[source] += row.total
     }
   }

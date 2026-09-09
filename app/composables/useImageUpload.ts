@@ -10,14 +10,14 @@ const MAX_FILES = 10
 export function useImageUpload() {
   const toast = useToast()
   const { t } = useI18n()
-  const { compressEnabled, clientWebpQuality } = useUploadPreferences()
+  const { compressEnabled, clientWebpQuality, lastTagIds } = useUploadPreferences()
   const uploading = ref(false)
   const progressItems = ref<UploadProgressItem[]>([])
   const lastUploadResult = ref<UploadResponse | null>(null)
 
   async function uploadFiles(
     files: File[],
-    options?: { notify?: boolean }
+    options?: { notify?: boolean, tagIds?: number[] }
   ) {
     if (uploading.value) return
 
@@ -56,6 +56,12 @@ export function useImageUpload() {
       const formData = new FormData()
       for (const file of prepared) {
         formData.append('files', file, file.name)
+      }
+
+      const tagIds = options?.tagIds ?? lastTagIds.value
+      if (tagIds.length) {
+        formData.append('tagIds', JSON.stringify(tagIds))
+        lastTagIds.value = tagIds
       }
 
       const response = await $fetch<UploadResponse>('/api/images/upload', {

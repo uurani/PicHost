@@ -52,4 +52,4 @@ npm run docs:build    # 构建静态站点
 npm run docs:preview  # 预览构建结果
 ```
 
-文档源码在 `docs-site/`；截图源文件在 `docs/screenshots/`（含 `login.png`、`setup.png`、`setup-restore.png` 等），构建前会复制到 `docs-site/public/screenshots/`。在线文档：<https://o96u.github.io/PicHost/>
+文档源码在 `docs-site/`；截图源文件在 `docs/screenshots/`（含 `upload.png`、`gallery.png`、`tags.png`、`api.png`、`storage.png`、`settings.png`、`logs.png`、`setup.png` 等），构建前会复制到 `docs-site/public/screenshots/`。在线文档：<https://o96u.github.io/PicHost/>

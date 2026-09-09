@@ -13,6 +13,8 @@ const props = withDefaults(defineProps<{
   /** 图库：5 列 × 2 行，缩略图略扁 */
   gallery?: boolean
   allowDelete?: boolean
+  showTags?: boolean
+  showTagAction?: boolean
 }>(), {
   selectable: true,
   showKey: true,
@@ -20,7 +22,9 @@ const props = withDefaults(defineProps<{
   dense: false,
   compact: false,
   gallery: false,
-  allowDelete: true
+  allowDelete: true,
+  showTags: false,
+  showTagAction: false
 })
 
 const gridClass = computed(() => {
@@ -37,6 +41,9 @@ const emit = defineEmits<{
   'update:selectedKeys': [value: Set<string>]
   'preview': [image: ImageItem]
   'delete': [image: ImageItem]
+  'tag-click': [tagId: number]
+  'untagged-click': []
+  'edit-tags': [image: ImageItem]
 }>()
 
 const { t } = useI18n()
@@ -68,9 +75,14 @@ function updateSelection(key: string, selected: boolean) {
       :compact="compact"
       :gallery="gallery"
       :allow-delete="allowDelete"
+      :show-tags="showTags"
+      :show-tag-action="showTagAction"
       @update:selected="updateSelection(image.key, $event)"
       @preview="emit('preview', image)"
       @delete="emit('delete', image)"
+      @tag-click="emit('tag-click', $event)"
+      @untagged-click="emit('untagged-click')"
+      @edit-tags="emit('edit-tags', image)"
     />
   </div>
   <div

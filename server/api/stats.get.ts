@@ -2,6 +2,7 @@ import { getImageUserFilter, requireUserAuth } from '../utils/access'
 import { createApiError } from '../utils/api-error'
 import { logException } from '../utils/logger'
 import { countUsers, getActivityStats } from '../utils/db'
+import { readTagFilterQuery } from '../utils/image-query'
 import {
   countImages,
   getFolderStorageStats,
@@ -39,13 +40,18 @@ async function resolveStorageUsage(usedBytes: number): Promise<StorageUsageStat>
 export default defineEventHandler(async (event) => {
   const user = await requireUserAuth(event)
   const userFilter = await getImageUserFilter(event)
+  const query = getQuery(event)
+  const tagFilter = readTagFilterQuery(query)
+  if (tagFilter === null) {
+    createApiError(event, 'INVALID_REQUEST', '无效的标签筛选参数', 400)
+  }
 
   try {
     if (userFilter === 'admin') {
       const activity = getActivityStats()
       const [storedCount, byFolder, storageUsage] = await Promise.all([
-        countImages(),
-        getFolderStorageStats(),
+        countImages('admin', undefined, tagFilter),
+        getFolderStorageStats('admin', tagFilter),
         resolveStorageUsage(activity.uploadBytesTotal)
       ])
 
@@ -58,7 +64,7 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    const scoped = await getUserScopedStorageStats(user.id)
+    const scoped = await getUserScopedStorageStats(user.id, tagFilter)
     const storageUsage = await resolveStorageUsage(scoped.uploadBytesTotal)
 
     return {

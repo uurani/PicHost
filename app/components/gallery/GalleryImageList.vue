@@ -1,16 +1,18 @@
 <script setup lang="ts">
-import type { ImageItem } from '~/types/image'
+import type { ImageItem, ImageTag } from '~/types/image'
 
 const props = withDefaults(defineProps<{
   items: ImageItem[]
   selectedKeys: Set<string>
   selectable?: boolean
   showStorage?: boolean
+  showTags?: boolean
   emptyText?: string
   showDelete?: boolean
 }>(), {
   selectable: false,
   showStorage: false,
+  showTags: false,
   showDelete: true
 })
 
@@ -18,10 +20,14 @@ const emit = defineEmits<{
   'update:selectedKeys': [value: Set<string>]
   'preview': [image: ImageItem]
   'delete': [image: ImageItem]
+  'tag-click': [tagId: number]
+  'untagged-click': []
 }>()
 
 const { t } = useI18n()
 const { formatFileSize } = useFileSize()
+
+const INLINE_TAG_LIMIT = 3
 
 const displayEmptyText = computed(() => props.emptyText ?? t('image.empty'))
 
@@ -76,10 +82,33 @@ function sourceLabel(image: ImageItem) {
   }
 }
 
-function typeLabel(image: ImageItem) {
-  if (props.showStorage && image.storage) return image.storage.name
-  return '—'
+function sourceIcon(image: ImageItem) {
+  switch (image.uploadSource) {
+    case 'web':
+      return 'i-lucide-globe'
+    case 'api':
+      return 'i-lucide-code-xml'
+    default:
+      return null
+  }
 }
+
+function storageIcon(image: ImageItem) {
+  return image.storage?.type === 'local' ? 'i-lucide-hard-drive' : 'i-lucide-cloud'
+}
+
+function tagDisplay(tags: ImageTag[] | undefined) {
+  const list = tags ?? []
+  if (list.length <= INLINE_TAG_LIMIT) {
+    return { visible: list, hidden: [] as ImageTag[] }
+  }
+  return {
+    visible: list.slice(0, INLINE_TAG_LIMIT),
+    hidden: list.slice(INLINE_TAG_LIMIT)
+  }
+}
+
+const metaBadgeClass = 'inline-flex max-w-full items-center gap-1 rounded-md border border-default px-1.5 py-0.5 text-[11px] leading-4 text-muted'
 </script>
 
 <template>
@@ -88,12 +117,12 @@ function typeLabel(image: ImageItem) {
     class="overflow-hidden rounded-xl border border-default bg-default"
   >
     <div class="overflow-x-auto">
-      <table class="min-w-full text-sm">
-        <thead class="border-b border-default text-xs text-muted">
+      <table class="min-w-full text-xs">
+        <thead class="border-b border-default bg-elevated/40 text-muted">
           <tr>
             <th
               v-if="selectable"
-              class="w-10 px-4 py-3 text-left font-medium"
+              class="w-10 px-3 py-2.5 text-left font-medium"
             >
               <UCheckbox
                 :model-value="allSelected ? true : headerIndeterminate ? 'indeterminate' : false"
@@ -101,22 +130,31 @@ function typeLabel(image: ImageItem) {
                 @update:model-value="toggleAll"
               />
             </th>
-            <th class="min-w-[16rem] px-4 py-3 text-left font-medium">
+            <th class="min-w-[14rem] px-3 py-2.5 text-left font-medium">
               {{ t('stats.colFilename') }}
             </th>
-            <th class="hidden w-28 px-4 py-3 text-left font-medium sm:table-cell">
+            <th class="hidden w-24 px-3 py-2.5 text-left font-medium sm:table-cell">
               {{ t('stats.colSource') }}
             </th>
-            <th class="w-24 px-4 py-3 text-left font-medium">
+            <th class="w-20 px-3 py-2.5 text-left font-medium">
               {{ t('stats.colSize') }}
             </th>
-            <th class="hidden w-32 px-4 py-3 text-left font-medium md:table-cell">
+            <th
+              v-if="showStorage"
+              class="hidden w-28 px-3 py-2.5 text-left font-medium md:table-cell"
+            >
               {{ t('stats.colType') }}
             </th>
-            <th class="hidden w-44 px-4 py-3 text-left font-medium lg:table-cell">
+            <th class="hidden w-40 px-3 py-2.5 text-left font-medium lg:table-cell">
               {{ t('stats.colUploadedAt') }}
             </th>
-            <th class="w-28 px-4 py-3 text-right font-medium">
+            <th
+              v-if="showTags"
+              class="min-w-[9rem] px-3 py-2.5 text-left font-medium md:table-cell"
+            >
+              {{ t('tags.column') }}
+            </th>
+            <th class="w-24 px-3 py-2.5 text-right font-medium">
               {{ t('stats.colActions') }}
             </th>
           </tr>
@@ -125,22 +163,23 @@ function typeLabel(image: ImageItem) {
           <tr
             v-for="image in items"
             :key="image.key"
-            class="transition-colors hover:bg-muted/20"
+            class="transition-colors hover:bg-elevated/50"
+            :class="selectedKeys.has(image.key) ? 'bg-primary/5' : ''"
           >
             <td
               v-if="selectable"
-              class="px-4 py-3"
+              class="px-3 py-2"
             >
               <UCheckbox
                 :model-value="selectedKeys.has(image.key)"
                 @update:model-value="updateSelection(image.key, $event === true)"
               />
             </td>
-            <td class="px-4 py-3">
+            <td class="px-3 py-2.5">
               <div class="flex min-w-0 items-center gap-3">
                 <button
                   type="button"
-                  class="relative size-10 shrink-0 overflow-hidden rounded-md border border-default bg-muted"
+                  class="relative size-12 shrink-0 overflow-hidden rounded-md border border-default bg-muted"
                   :aria-label="t('image.openPreview')"
                   @click="emit('preview', image)"
                 >
@@ -152,35 +191,108 @@ function typeLabel(image: ImageItem) {
                   >
                 </button>
                 <p
-                  class="min-w-0 flex-1 truncate font-medium"
+                  class="min-w-0 flex-1 truncate text-highlighted"
                   :title="image.originalName"
                 >
                   {{ image.originalName }}
                 </p>
               </div>
             </td>
-            <td class="hidden px-4 py-3 sm:table-cell">
+            <td class="hidden px-3 py-2 sm:table-cell">
               <span
-                v-if="sourceLabel(image)"
-                class="inline-flex rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary"
+                v-if="sourceLabel(image) && sourceIcon(image)"
+                :class="metaBadgeClass"
               >
-                {{ sourceLabel(image) }}
+                <UIcon
+                  :name="sourceIcon(image)!"
+                  class="size-3 shrink-0"
+                />
+                <span class="truncate">{{ sourceLabel(image) }}</span>
               </span>
               <span
                 v-else
                 class="text-muted"
               >—</span>
             </td>
-            <td class="px-4 py-3 text-muted">
+            <td class="px-3 py-2 tabular-nums text-muted">
               {{ formatFileSize(image.size) }}
             </td>
-            <td class="hidden px-4 py-3 text-muted md:table-cell">
-              <span class="truncate">{{ typeLabel(image) }}</span>
+            <td
+              v-if="showStorage"
+              class="hidden px-3 py-2 md:table-cell"
+            >
+              <span
+                v-if="image.storage"
+                :class="metaBadgeClass"
+                :title="image.storage.name"
+              >
+                <UIcon
+                  :name="storageIcon(image)"
+                  class="size-3 shrink-0"
+                />
+                <span class="truncate">{{ image.storage.name }}</span>
+              </span>
+              <span
+                v-else
+                class="text-muted"
+              >—</span>
             </td>
-            <td class="hidden px-4 py-3 text-muted lg:table-cell">
+            <td class="hidden px-3 py-2 tabular-nums text-muted lg:table-cell">
               {{ formatUploadedAt(image.uploadedAt) }}
             </td>
-            <td class="px-4 py-3">
+            <td
+              v-if="showTags"
+              class="px-3 py-2 md:table-cell"
+            >
+              <div
+                v-if="image.tags?.length"
+                class="flex flex-wrap items-center gap-1"
+              >
+                <TagBadge
+                  v-for="tag in tagDisplay(image.tags).visible"
+                  :key="tag.id"
+                  :tag="tag"
+                  clickable
+                  @click="emit('tag-click', tag.id)"
+                />
+                <UPopover
+                  v-if="tagDisplay(image.tags).hidden.length"
+                  :content="{ side: 'bottom', align: 'start' }"
+                >
+                  <button
+                    type="button"
+                    class="inline-flex rounded-md border border-default px-1.5 py-0.5 text-[11px] text-muted transition-colors hover:border-primary/40 hover:text-primary"
+                    :aria-label="t('tags.moreTags', { n: tagDisplay(image.tags).hidden.length })"
+                    @click.stop
+                  >
+                    +{{ tagDisplay(image.tags).hidden.length }}
+                  </button>
+                  <template #content>
+                    <div
+                      class="flex max-w-56 flex-wrap gap-1 p-2"
+                      @click.stop
+                    >
+                      <TagBadge
+                        v-for="tag in tagDisplay(image.tags).hidden"
+                        :key="tag.id"
+                        :tag="tag"
+                        clickable
+                        @click="emit('tag-click', tag.id)"
+                      />
+                    </div>
+                  </template>
+                </UPopover>
+              </div>
+              <button
+                v-else
+                type="button"
+                class="rounded-md border border-dashed border-default px-1.5 py-0.5 text-[11px] text-muted transition-colors hover:border-primary/40 hover:text-primary"
+                @click.stop="emit('untagged-click')"
+              >
+                {{ t('tags.unlabeled') }}
+              </button>
+            </td>
+            <td class="px-3 py-2">
               <div class="flex items-center justify-end gap-0.5 text-muted">
                 <CopyButton
                   icon="i-lucide-link"
@@ -217,7 +329,7 @@ function typeLabel(image: ImageItem) {
   </div>
   <div
     v-else
-    class="rounded-xl border border-dashed border-default py-16 text-center text-sm text-muted"
+    class="rounded-xl border border-dashed border-default py-16 text-center text-xs text-muted"
   >
     {{ displayEmptyText }}
   </div>

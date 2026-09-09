@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import type { ImageItem } from '~/types/image'
 import type { CopyFormat } from '~/composables/useUploadPreferences'
-import { formatImageDimensions } from '~/utils/image-display'
-
-type EmbedFormat = CopyFormat | 'bbcode'
+import { buildImageBbcode, formatImageDimensions } from '~/utils/image-display'
 
 const props = withDefaults(defineProps<{
   open: boolean
   image: ImageItem | null
   showStorage?: boolean
+  showTags?: boolean
   deleting?: boolean
   allowDelete?: boolean
 }>(), {
   showStorage: false,
+  showTags: false,
   allowDelete: true
 })
 
@@ -22,6 +22,7 @@ const emit = defineEmits<{
 }>()
 
 const toast = useToast()
+
 const { formatFileSize } = useFileSize()
 const { t, locale } = useI18n()
 const { copyFormat } = useUploadPreferences()
@@ -30,7 +31,7 @@ const naturalWidth = ref<number | null>(null)
 const naturalHeight = ref<number | null>(null)
 const dimensionsLoaded = ref(false)
 const copyingUrl = ref(false)
-const embedFormat = ref<EmbedFormat>('url')
+const embedFormat = ref<CopyFormat>('url')
 
 const embedFormatItems = computed(() => [
   { label: t('copy.url'), value: 'url' as const },
@@ -65,7 +66,7 @@ const sizeLabel = computed(() => {
 
 const bbcodeValue = computed(() => {
   if (!props.image) return ''
-  return `[img]${props.image.url}[/img]`
+  return buildImageBbcode(props.image.url)
 })
 
 const previewValue = computed(() => {
@@ -110,6 +111,17 @@ const uploadSourceTag = computed(() => {
   }
 })
 
+const uploadSourceIcon = computed(() => {
+  switch (props.image?.uploadSource) {
+    case 'web':
+      return 'i-lucide-globe'
+    case 'api':
+      return 'i-lucide-code-xml'
+    default:
+      return null
+  }
+})
+
 const dimensionsLabel = computed(() => {
   const formatted = formatImageDimensions(naturalWidth.value, naturalHeight.value)
   if (formatted) return formatted
@@ -128,11 +140,9 @@ watch(() => props.open, (open) => {
   }
 })
 
-function selectEmbedFormat(value: EmbedFormat) {
+function selectEmbedFormat(value: CopyFormat) {
   embedFormat.value = value
-  if (value !== 'bbcode') {
-    copyFormat.value = value
-  }
+  copyFormat.value = value
 }
 
 async function copyText(text: string, successTitle: string) {
@@ -289,6 +299,32 @@ function onImageLoad(event: Event) {
               </dd>
             </div>
             <div
+              v-if="showTags"
+              class="flex gap-4 py-2.5"
+            >
+              <dt class="w-20 shrink-0 text-muted">
+                {{ t('tags.column') }}
+              </dt>
+              <dd class="min-w-0 flex-1">
+                <div
+                  v-if="image.tags?.length"
+                  class="flex flex-wrap gap-1.5"
+                >
+                  <TagBadge
+                    v-for="tag in image.tags"
+                    :key="tag.id"
+                    :tag="tag"
+                  />
+                </div>
+                <span
+                  v-else
+                  class="inline-flex rounded-md border border-dashed border-default px-2 py-0.5 text-xs text-muted"
+                >
+                  {{ t('tags.unlabeled') }}
+                </span>
+              </dd>
+            </div>
+            <div
               v-if="uploadSourceTag"
               class="flex gap-4 py-2.5"
             >
@@ -296,7 +332,14 @@ function onImageLoad(event: Event) {
                 {{ t('image.previewUploadSource') }}
               </dt>
               <dd class="min-w-0 flex-1">
-                <span class="inline-flex rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                <span
+                  v-if="uploadSourceIcon"
+                  class="inline-flex items-center gap-1 rounded-md border border-default px-2 py-0.5 text-xs text-muted"
+                >
+                  <UIcon
+                    :name="uploadSourceIcon"
+                    class="size-3 shrink-0"
+                  />
                   {{ uploadSourceTag }}
                 </span>
               </dd>

@@ -16,6 +16,7 @@ PicHost uses role-based access control (RBAC): **admin** and **user**. Enforceme
 | Global API token | ✓ | — |
 | Personal API token | ✓ | ✓ |
 | Gallery stats overview (incl. user count) | ✓ | partial |
+| Tag management (Settings → Tag management) | ✓ | — |
 | Activity log (Settings → Activity log) | ✓ | — |
 
 Regular users see **API**, **Gallery** in the nav; user menu: **Change password**, **Sign out**.
@@ -38,6 +39,20 @@ Regular users see **API**, **Gallery** in the nav; user menu: **Change password*
 - Web login/register requires verification: local slider by default; admins can switch to Turnstile or Cap under **Settings → Access control**
 - If verification is misconfigured: `docker exec pichost slider` resets to the local slider
 - Login rate limiting
+
+## Tags
+
+- Tags are **per-user**: regular users manage and filter only their own tags and images
+- After upload on the home page, **tag one image** or use **batch tagging**; the gallery supports tag filters (OR / AND) and batch tagging
+- Admins manage tags under **Settings → Tag management** (create, recolor, merge, delete). Tags classify images only and **do not change** `images/` storage paths
+
+![Batch tagging](/screenshots/tags-batch.png) ![Tag management](/screenshots/tags.png)
+
+## Activity log
+
+Admins review uploads, deletes, logins, settings changes, tag operations, and more under **Settings → Activity log**, with filters for date, user, action type, and source.
+
+![Activity log](/screenshots/logs.png)
 
 ## Upload preferences & auto-delete
 

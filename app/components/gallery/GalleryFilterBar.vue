@@ -5,24 +5,39 @@ const props = withDefaults(defineProps<{
   storageBackendItems: Array<{ label: string, value: string }>
   uploadSource: string
   uploadSourceItems: Array<{ label: string, value: string }>
+  tagIds?: number[]
+  tagMode?: 'or' | 'and'
+  untaggedOnly?: boolean
+  tags?: Array<{ id: number, name: string, color: string, imageCount?: number }>
   viewMode: 'grid' | 'list'
   selectedCount?: number
   loading?: boolean
   showBatchDelete?: boolean
+  showBatchTags?: boolean
 }>(), {
   selectedCount: 0,
   loading: false,
-  showBatchDelete: true
+  showBatchDelete: true,
+  showBatchTags: false,
+  tagIds: () => [],
+  tags: () => [],
+  tagMode: 'or',
+  untaggedOnly: false
 })
 
 const emit = defineEmits<{
   'update:searchQuery': [value: string]
   'update:storageBackend': [value: string]
   'update:uploadSource': [value: string]
+  'update:tagIds': [value: number[]]
+  'update:tagMode': [value: 'or' | 'and']
+  'update:untaggedOnly': [value: boolean]
   'update:viewMode': [mode: 'grid' | 'list']
   'search': []
   'reset': []
   'batch-delete': []
+  'batch-tags': []
+  'manage-tags': []
 }>()
 
 const { t } = useI18n()
@@ -74,6 +89,18 @@ function viewButtonClass(active: boolean) {
       @update:model-value="emit('update:uploadSource', $event)"
     />
 
+    <TagFilterSelect
+      :model-value="tagIds"
+      :tag-mode="tagMode"
+      :untagged-only="untaggedOnly"
+      :tags="tags"
+      :disabled="loading"
+      @update:model-value="emit('update:tagIds', $event)"
+      @update:tag-mode="emit('update:tagMode', $event)"
+      @update:untagged-only="emit('update:untaggedOnly', $event)"
+      @manage="emit('manage-tags')"
+    />
+
     <UButton
       type="submit"
       icon="i-lucide-search"
@@ -98,6 +125,20 @@ function viewButtonClass(active: boolean) {
       @click="emit('reset')"
     >
       {{ t('stats.resetFilters') }}
+    </UButton>
+
+    <UButton
+      v-if="showBatchTags"
+      type="button"
+      icon="i-lucide-tags"
+      size="sm"
+      variant="outline"
+      color="neutral"
+      class="shrink-0"
+      :disabled="!selectedCount || loading"
+      @click="emit('batch-tags')"
+    >
+      {{ t('tags.batchAdd') }}
     </UButton>
 
     <UButton

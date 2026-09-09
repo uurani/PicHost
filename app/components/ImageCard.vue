@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ImageItem } from '~/types/image'
 import type { CopyFormat } from '~/composables/useUploadPreferences'
+import { buildImageBbcode } from '~/utils/image-display'
 
 const props = withDefaults(defineProps<{
   image: ImageItem
@@ -11,19 +12,26 @@ const props = withDefaults(defineProps<{
   compact?: boolean
   gallery?: boolean
   allowDelete?: boolean
+  showTags?: boolean
+  showTagAction?: boolean
 }>(), {
   selectable: true,
   showKey: true,
   showStorage: false,
   compact: false,
   gallery: false,
-  allowDelete: true
+  allowDelete: true,
+  showTags: false,
+  showTagAction: false
 })
 
 const emit = defineEmits<{
   'update:selected': [value: boolean]
   'preview': []
   'delete': []
+  'tag-click': [tagId: number]
+  'untagged-click': []
+  'edit-tags': []
 }>()
 
 const { formatFileSize } = useFileSize()
@@ -79,7 +87,8 @@ onUnmounted(clearRetryTimer)
 const copyFormatItems = computed(() => [
   { label: t('copy.url'), value: 'url' as const },
   { label: t('copy.markdown'), value: 'markdown' as const },
-  { label: t('copy.html'), value: 'html' as const }
+  { label: t('copy.html'), value: 'html' as const },
+  { label: t('copy.bbcode'), value: 'bbcode' as const }
 ])
 
 const uploadedLabel = computed(() => {
@@ -96,6 +105,8 @@ const previewValue = computed(() => {
       return props.image.markdown
     case 'html':
       return props.image.html
+    case 'bbcode':
+      return buildImageBbcode(props.image.url)
     default:
       return props.image.url
   }
@@ -107,6 +118,8 @@ const copySuccessTitle = computed(() => {
       return t('copy.copiedMarkdown')
     case 'html':
       return t('copy.copiedHtml')
+    case 'bbcode':
+      return t('copy.copiedBbcode')
     default:
       return t('copy.copiedUrl')
   }
@@ -126,6 +139,34 @@ const uploadSourceLabel = computed(() => {
       return null
   }
 })
+
+const uploadSourceIcon = computed(() => {
+  switch (props.image.uploadSource) {
+    case 'web':
+      return 'i-lucide-globe'
+    case 'api':
+      return 'i-lucide-code-xml'
+    default:
+      return null
+  }
+})
+
+const GALLERY_INLINE_TAG_LIMIT = 3
+
+const galleryTagDisplay = computed(() => {
+  const tags = props.image.tags ?? []
+  if (tags.length <= GALLERY_INLINE_TAG_LIMIT) {
+    return { visible: tags, hidden: [] as typeof tags }
+  }
+  return {
+    visible: tags.slice(0, GALLERY_INLINE_TAG_LIMIT),
+    hidden: tags.slice(GALLERY_INLINE_TAG_LIMIT)
+  }
+})
+const sessionVisibleTags = computed(() => props.image.tags ?? [])
+const sessionTagActionLabel = computed(() =>
+  props.image.tags?.length ? t('tags.addTag') : t('tags.untagged')
+)
 
 function toggleSelected(value: boolean | 'indeterminate') {
   emit('update:selected', value === true)
@@ -210,16 +251,61 @@ async function copyGalleryUrl() {
       <p class="truncate text-xs text-muted">
         {{ uploadedLabel }} · {{ formatFileSize(image.size) }}
       </p>
+
+      <div
+        v-if="showTags"
+        class="flex flex-wrap items-center gap-1.5"
+      >
+        <template v-if="image.tags?.length">
+          <TagBadge
+            v-for="tag in galleryTagDisplay.visible"
+            :key="tag.id"
+            :tag="tag"
+            clickable
+            @click="emit('tag-click', tag.id)"
+          />
+          <UPopover
+            v-if="galleryTagDisplay.hidden.length"
+            :content="{ side: 'bottom', align: 'start' }"
+          >
+            <button
+              type="button"
+              class="inline-flex rounded-md border border-default px-2 py-0.5 text-xs text-muted transition-colors hover:border-primary/40 hover:text-primary"
+              :aria-label="t('tags.moreTags', { n: galleryTagDisplay.hidden.length })"
+              @click.stop
+            >
+              +{{ galleryTagDisplay.hidden.length }}
+            </button>
+            <template #content>
+              <div
+                class="flex max-w-56 flex-wrap gap-1.5 p-2"
+                @click.stop
+              >
+                <TagBadge
+                  v-for="tag in galleryTagDisplay.hidden"
+                  :key="tag.id"
+                  :tag="tag"
+                  clickable
+                  @click="emit('tag-click', tag.id)"
+                />
+              </div>
+            </template>
+          </UPopover>
+        </template>
+        <button
+          v-else
+          type="button"
+          class="inline-flex rounded-md border border-dashed border-default px-2 py-0.5 text-xs text-muted transition-colors hover:border-primary/40 hover:text-primary"
+          @click.stop="emit('untagged-click')"
+        >
+          {{ t('tags.unlabeled') }}
+        </button>
+      </div>
+
       <div
         v-if="uploadSourceLabel || (showStorage && image.storage)"
-        class="flex flex-wrap gap-1.5"
+        class="flex flex-wrap items-center gap-1.5"
       >
-        <span
-          v-if="uploadSourceLabel"
-          class="inline-flex rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary"
-        >
-          {{ uploadSourceLabel }}
-        </span>
         <span
           v-if="showStorage && image.storage"
           class="inline-flex max-w-full items-center gap-1 rounded-md border border-default px-2 py-0.5 text-xs text-muted"
@@ -230,6 +316,16 @@ async function copyGalleryUrl() {
             class="size-3 shrink-0"
           />
           <span class="truncate">{{ image.storage.name }}</span>
+        </span>
+        <span
+          v-if="uploadSourceLabel && uploadSourceIcon"
+          class="inline-flex max-w-full items-center gap-1 rounded-md border border-default px-2 py-0.5 text-xs text-muted"
+        >
+          <UIcon
+            :name="uploadSourceIcon"
+            class="size-3 shrink-0"
+          />
+          <span class="truncate">{{ uploadSourceLabel }}</span>
         </span>
       </div>
     </div>
@@ -303,6 +399,21 @@ async function copyGalleryUrl() {
         />
       </div>
       <div
+        v-if="allowDelete && showTagAction"
+        class="absolute top-2 right-2"
+        @click.stop
+      >
+        <UButton
+          icon="i-lucide-trash-2"
+          variant="solid"
+          color="neutral"
+          size="xs"
+          class="bg-black/55 text-white hover:bg-black/70"
+          :aria-label="t('common.delete')"
+          @click="emit('delete')"
+        />
+      </div>
+      <div
         v-if="image.owner"
         class="absolute bottom-2 left-2 max-w-[calc(50%-0.5rem)]"
         @click.stop
@@ -371,6 +482,20 @@ async function copyGalleryUrl() {
       >
         {{ image.originalName }}
       </p>
+
+      <button
+        v-if="showTagAction && image.tags?.length"
+        type="button"
+        class="flex flex-wrap items-center gap-1.5 text-left"
+        @click.stop="emit('edit-tags')"
+      >
+        <TagBadge
+          v-for="tag in sessionVisibleTags"
+          :key="tag.id"
+          :tag="tag"
+        />
+      </button>
+
       <p class="text-xs text-muted">
         {{ uploadedLabel }} · {{ formatFileSize(image.size) }}
       </p>
@@ -396,12 +521,27 @@ async function copyGalleryUrl() {
           class="min-w-0 flex-1 font-mono text-xs"
         />
         <CopyButton
-          icon="i-lucide-copy"
           :label="t('common.copy')"
+          :variant="showTagAction ? 'solid' : 'soft'"
+          :color="showTagAction ? 'primary' : undefined"
+          :icon="showTagAction ? undefined : 'i-lucide-copy'"
           :value="previewValue"
           :success-title="copySuccessTitle"
         />
       </div>
+
+      <button
+        v-if="showTagAction"
+        type="button"
+        class="inline-flex items-center gap-1 self-start text-xs text-muted transition-colors hover:text-primary"
+        @click.stop="emit('edit-tags')"
+      >
+        <UIcon
+          name="i-lucide-plus"
+          class="size-3"
+        />
+        {{ sessionTagActionLabel }}
+      </button>
 
       <p
         v-if="showKey"

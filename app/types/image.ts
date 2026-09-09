@@ -44,6 +44,17 @@ export interface ImageItem {
   }
   /** 上传来源：网页或 API（来自活动日志） */
   uploadSource?: 'web' | 'api'
+  /** 图片标签 */
+  tags?: ImageTag[]
+}
+
+export interface ImageTag {
+  id: number
+  name: string
+  color: string
+  imageCount?: number
+  createdAt?: string
+  lastUsedAt?: string | null
 }
 
 export interface UploadErrorItem {

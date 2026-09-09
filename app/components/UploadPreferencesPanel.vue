@@ -23,7 +23,8 @@ const {
 const copyFormatItems = computed(() => [
   { label: t('copy.url'), value: 'url' as const },
   { label: t('copy.markdown'), value: 'markdown' as const },
-  { label: t('copy.html'), value: 'html' as const }
+  { label: t('copy.html'), value: 'html' as const },
+  { label: t('copy.bbcode'), value: 'bbcode' as const }
 ])
 
 const clientQualityLevel = computed(() => {
@@ -32,7 +33,7 @@ const clientQualityLevel = computed(() => {
   return t('preferences.qualityLow')
 })
 
-function setCopyFormat(value: 'url' | 'markdown' | 'html') {
+function setCopyFormat(value: 'url' | 'markdown' | 'html' | 'bbcode') {
   copyFormat.value = value
 }
 

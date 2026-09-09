@@ -15,7 +15,8 @@ import type { LogSource } from './db'
 import { generateImageKey } from './image-key'
 import { buildImageItem, sanitizeOriginalName } from './image-response'
 import { getStorageLayout, getWebpQuality } from './env'
-import { insertActivityLog } from './db'
+import { logActivity } from './activity-log'
+import { attachTagsAfterUpload, getTagsForImageKeys } from './tags'
 import { putImage } from './storage'
 import { logInfo, logException } from './logger'
 
@@ -64,6 +65,7 @@ export async function processSingleImageUpload(
     filename?: string
     source?: LogSource
     userId?: number | null
+    tagIds?: number[]
   }
 ): Promise<{ item: ImageItem } | { error: UploadErrorItem }> {
   const originalName = sanitizeOriginalName(input.filename ?? 'image')
@@ -149,16 +151,15 @@ export async function processSingleImageUpload(
     }
   }
 
-  insertActivityLog({
+  logActivity(event, {
     action: 'upload',
     key,
     originalName,
     size: compressed.bytes.byteLength,
     contentType: compressed.mime,
-    source: input.source ?? 'web',
+    source: input.source,
     userId: input.userId ?? null,
-    backendId,
-    createdAt: uploadedAt
+    backendId
   })
 
   logInfo('upload success', {
@@ -168,17 +169,26 @@ export async function processSingleImageUpload(
     source: input.source ?? 'web'
   })
 
+  if (input.tagIds?.length && input.userId != null) {
+    attachTagsAfterUpload(key, input.tagIds, input.userId)
+  }
+
+  const item = buildImageItem({
+    key,
+    event,
+    originalName,
+    contentType: compressed.mime,
+    size: compressed.bytes.byteLength,
+    uploadedAt
+  })
+
+  const tags = getTagsForImageKeys([key]).get(key) ?? []
+
   return {
     item: {
-      ...buildImageItem({
-        key,
-        event,
-        originalName,
-        contentType: compressed.mime,
-        size: compressed.bytes.byteLength,
-        uploadedAt
-      }),
-      uploadSource: input.source ?? 'web'
+      ...item,
+      uploadSource: input.source === 'api' ? 'api' : 'web',
+      ...(tags.length ? { tags } : {})
     }
   }
 }

@@ -1,19 +1,21 @@
 const STORAGE_KEY = 'pichost.upload-preferences'
 
-export type CopyFormat = 'url' | 'markdown' | 'html'
+export type CopyFormat = 'url' | 'markdown' | 'html' | 'bbcode'
 
 export interface UploadPreferences {
   compressEnabled: boolean
   autoCopyMarkdown: boolean
   copyFormat: CopyFormat
   clientWebpQuality: number
+  lastTagIds: number[]
 }
 
 const DEFAULTS: UploadPreferences = {
   compressEnabled: false,
   autoCopyMarkdown: false,
   copyFormat: 'markdown',
-  clientWebpQuality: 80
+  clientWebpQuality: 80,
+  lastTagIds: []
 }
 
 function clampQuality(value: unknown): number {
@@ -23,7 +25,7 @@ function clampQuality(value: unknown): number {
 }
 
 function isCopyFormat(value: unknown): value is CopyFormat {
-  return value === 'url' || value === 'markdown' || value === 'html'
+  return value === 'url' || value === 'markdown' || value === 'html' || value === 'bbcode'
 }
 
 function readStored(): UploadPreferences {
@@ -37,7 +39,10 @@ function readStored(): UploadPreferences {
       compressEnabled: parsed.compressEnabled === true,
       autoCopyMarkdown: parsed.autoCopyMarkdown === true,
       copyFormat: isCopyFormat(parsed.copyFormat) ? parsed.copyFormat : DEFAULTS.copyFormat,
-      clientWebpQuality: clampQuality(parsed.clientWebpQuality)
+      clientWebpQuality: clampQuality(parsed.clientWebpQuality),
+      lastTagIds: Array.isArray(parsed.lastTagIds)
+        ? parsed.lastTagIds.filter(id => Number.isInteger(id) && id > 0)
+        : DEFAULTS.lastTagIds
     }
   } catch {
     return { ...DEFAULTS }
@@ -54,6 +59,7 @@ export function useUploadPreferences() {
   const autoCopyMarkdown = useState('upload-pref-auto-md', () => DEFAULTS.autoCopyMarkdown)
   const copyFormat = useState<CopyFormat>('upload-pref-copy-format', () => DEFAULTS.copyFormat)
   const clientWebpQuality = useState('upload-pref-webp-quality', () => DEFAULTS.clientWebpQuality)
+  const lastTagIds = useState<number[]>('upload-pref-last-tag-ids', () => DEFAULTS.lastTagIds)
   const loaded = useState('upload-pref-loaded', () => false)
 
   function loadPreferences() {
@@ -62,6 +68,7 @@ export function useUploadPreferences() {
     autoCopyMarkdown.value = stored.autoCopyMarkdown
     copyFormat.value = stored.copyFormat
     clientWebpQuality.value = stored.clientWebpQuality
+    lastTagIds.value = stored.lastTagIds
     loaded.value = true
   }
 
@@ -74,11 +81,20 @@ export function useUploadPreferences() {
       compressEnabled: compressEnabled.value,
       autoCopyMarkdown: autoCopyMarkdown.value,
       copyFormat: copyFormat.value,
-      clientWebpQuality: clampQuality(clientWebpQuality.value)
+      clientWebpQuality: clampQuality(clientWebpQuality.value),
+      lastTagIds: lastTagIds.value
     })
   }
 
-  watch([compressEnabled, autoCopyMarkdown, copyFormat, clientWebpQuality], () => {
+  function resetToDefaults() {
+    compressEnabled.value = DEFAULTS.compressEnabled
+    autoCopyMarkdown.value = DEFAULTS.autoCopyMarkdown
+    copyFormat.value = DEFAULTS.copyFormat
+    clientWebpQuality.value = DEFAULTS.clientWebpQuality
+    savePreferences()
+  }
+
+  watch([compressEnabled, autoCopyMarkdown, copyFormat, clientWebpQuality, lastTagIds], () => {
     if (loaded.value) {
       savePreferences()
     }
@@ -89,8 +105,10 @@ export function useUploadPreferences() {
     autoCopyMarkdown,
     copyFormat,
     clientWebpQuality,
+    lastTagIds,
     loaded,
     loadPreferences,
-    savePreferences
+    savePreferences,
+    resetToDefaults
   }
 }

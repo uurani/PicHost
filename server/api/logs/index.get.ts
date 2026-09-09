@@ -4,10 +4,9 @@ import { logException } from '../../utils/logger'
 import {
   listActivityLogs,
   listUserIdUsernameMap,
-  summarizeActivityLogs,
-  type LogAction,
-  type LogSource
+  summarizeActivityLogs
 } from '../../utils/db'
+import { isLogAction, isLogSource } from '../../utils/activity-log'
 import { ensureStorageSchema } from '../../utils/storage-backends'
 import {
   DEFAULT_LIST_LIMIT,
@@ -25,14 +24,10 @@ export default defineEventHandler(async (event) => {
     : DEFAULT_LIST_LIMIT
 
   const actionRaw = typeof query.action === 'string' ? query.action : ''
-  const action = (actionRaw === 'upload' || actionRaw === 'delete')
-    ? actionRaw as LogAction
-    : undefined
+  const action = isLogAction(actionRaw) ? actionRaw : undefined
 
   const sourceRaw = typeof query.source === 'string' ? query.source : ''
-  const source = (sourceRaw === 'web' || sourceRaw === 'api')
-    ? sourceRaw as LogSource
-    : undefined
+  const source = isLogSource(sourceRaw) ? sourceRaw : undefined
 
   const folder = typeof query.folder === 'string' && query.folder.trim()
     ? query.folder.trim()
@@ -40,6 +35,19 @@ export default defineEventHandler(async (event) => {
 
   const searchRaw = typeof query.q === 'string' ? query.q.trim() : ''
   const search = searchRaw || undefined
+
+  const dateFromRaw = typeof query.from === 'string' ? query.from.trim() : ''
+  const dateToRaw = typeof query.to === 'string' ? query.to.trim() : ''
+  const dateFrom = dateFromRaw && /^\d{4}-\d{2}-\d{2}$/.test(dateFromRaw)
+    ? `${dateFromRaw}T00:00:00.000Z`
+    : undefined
+  const dateTo = dateToRaw && /^\d{4}-\d{2}-\d{2}$/.test(dateToRaw)
+    ? (() => {
+        const end = new Date(`${dateToRaw}T00:00:00.000Z`)
+        end.setUTCDate(end.getUTCDate() + 1)
+        return end.toISOString()
+      })()
+    : undefined
 
   const pageRaw = Number(query.page ?? 1)
   const page = Number.isFinite(pageRaw) && pageRaw > 0
@@ -62,8 +70,25 @@ export default defineEventHandler(async (event) => {
 
   try {
     ensureStorageSchema()
-    const result = listActivityLogs({ limit, page, action, source, folder, userId, search })
-    const summary = summarizeActivityLogs({ source, folder, userId, search })
+    const result = listActivityLogs({
+      limit,
+      page,
+      action,
+      source,
+      folder,
+      userId,
+      search,
+      dateFrom,
+      dateTo
+    })
+    const summary = summarizeActivityLogs({
+      source,
+      folder,
+      userId,
+      search,
+      dateFrom,
+      dateTo
+    })
     const userMap = user.role === 'admin' ? listUserIdUsernameMap() : undefined
 
     return {
@@ -84,6 +109,8 @@ export default defineEventHandler(async (event) => {
               type: (row.backend_type === 'local' ? 'local' : 's3') as 'local' | 's3'
             }
           : null,
+        ipAddress: row.ip_address,
+        status: row.status === 'failure' ? 'failure' : 'success',
         createdAt: row.created_at
       })),
       total: result.total,

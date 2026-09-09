@@ -1,7 +1,7 @@
 import type { DeleteResponse } from '~/types/image'
-import { requireApiOrAdminAuth, assertImageOwnership, resolveActivitySource } from '../../utils/access'
+import { requireApiOrAdminAuth, assertImageOwnership } from '../../utils/access'
 import { createApiError } from '../../utils/api-error'
-import { insertActivityLog } from '../../utils/db'
+import { logActivity } from '../../utils/activity-log'
 import { getImageIndexRow, deleteImageIndex } from '../../utils/image-index'
 import { toCanonicalImageKey, validateImageKey } from '../../utils/image-key'
 import { deleteImage, headImage, resolveStorageImageKey } from '../../utils/storage'
@@ -40,13 +40,12 @@ export default defineEventHandler(async (event) => {
       deleteImageIndex(key)
       if (storageKey !== key) deleteImageIndex(storageKey)
 
-      insertActivityLog({
+      logActivity(event, {
         action: 'delete',
         key,
         originalName: indexed.original_name,
         size: indexed.size,
         contentType: indexed.content_type,
-        source: resolveActivitySource(event),
         userId: indexed.user_id ?? null,
         backendId: indexed.backend_id ?? null
       })
@@ -69,13 +68,12 @@ export default defineEventHandler(async (event) => {
       createApiError(event, 'DELETE_FAILED', '删除失败', 500)
     }
 
-    insertActivityLog({
+    logActivity(event, {
       action: 'delete',
       key,
       originalName: existing.originalName,
       size: existing.size,
       contentType: existing.contentType,
-      source: resolveActivitySource(event),
       userId: existing.userId ?? null,
       backendId: existing.backendId ?? null
     })

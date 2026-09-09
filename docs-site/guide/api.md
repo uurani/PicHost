@@ -2,6 +2,8 @@
 
 PicHost 提供 REST 接口与 Twikoo 兼容端点。登录后打开顶栏 **API** 页：左侧为接口目录与 Token 管理，中间为参数说明与 cURL 示例，右侧可 **在线调试** 发送请求。
 
+![API 文档与在线调试](/screenshots/api.png)
+
 ## 鉴权
 
 所有 REST 接口使用请求头：
@@ -28,8 +30,11 @@ Auth-Token: YOUR_TOKEN
 ```bash
 curl -X POST "https://admin.example.com/api/images/upload" \
   -H "Auth-Token: YOUR_TOKEN" \
-  -F "image=@./demo.png"
+  -F "image=@./demo.png" \
+  -F 'tagIds=[1,2]'
 ```
+
+可选表单字段 `tagIds`：JSON 数组字符串（如 `[1,2]`）或重复字段，上传成功后自动打标。存储路径仍为 `images/年/月/id.webp`，**不会**因标签创建子目录。
 
 ### 2. 获取图片列表
 
@@ -41,6 +46,16 @@ curl -X POST "https://admin.example.com/api/images/upload" \
 curl "https://admin.example.com/api/images?limit=20&page=1" \
   -H "Auth-Token: YOUR_TOKEN"
 ```
+
+可选查询参数：
+
+| 参数 | 说明 |
+| ---- | ---- |
+| `tagIds` | 逗号分隔的标签 ID，默认 **OR**（含任一标签） |
+| `tagMode` | `and` 时多标签取交集 |
+| `untagged` | `1` 仅返回无标签图片 |
+
+响应 `items[]` 含 `tags` 数组（`id`、`name`、`color`）。
 
 ### 3. 搜索图片
 
@@ -76,6 +91,27 @@ curl -X POST "https://admin.example.com/api/images/batch-delete" \
   -H "Content-Type: application/json" \
   -d '{"keys":["images/2026/08/a.webp","images/2026/08/b.webp"]}'
 ```
+
+### 6. 标签管理
+
+| 方法 | 路径 | 说明 |
+| ---- | ---- | ---- |
+| `GET` | `/api/tags` | 当前用户标签列表（含 `imageCount`） |
+| `POST` | `/api/tags` | 创建 `{ "name": "工作", "color": "#22c55e" }` |
+| `PATCH` | `/api/tags/:id` | 改名称/颜色 |
+| `DELETE` | `/api/tags/:id` | 删除标签（不删图片） |
+| `POST` | `/api/tags/merge` | `{ "sourceIds": [2,3], "targetId": 1 }` |
+
+### 7. 图片打标
+
+| 方法 | 路径 | 说明 |
+| ---- | ---- | ---- |
+| `POST` | `/api/images/tags` | `{ "key": "images/…", "tagIds": [1,2] }` 追加 |
+| `PATCH` | `/api/images/tags` | 整体替换标签集合 |
+| `DELETE` | `/api/images/tags` | `key` + `tagId` 移除单个 |
+| `POST` | `/api/images/batch-tags` | `{ "keys": [], "tagIds": [], "action": "add" \| "remove" }` |
+
+`GET /api/stats` 支持与列表相同的 `tagIds` / `tagMode` / `untagged` 筛选，统计与当前筛选一致。
 
 ## 错误格式
 

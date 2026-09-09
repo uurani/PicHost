@@ -2,6 +2,7 @@
 import type { SettingsTab } from '~/types/settings'
 import { ADMIN_SETTINGS_TABS, USER_SETTINGS_TABS } from '~/types/settings'
 import { willActivateDomainSeparation } from '~/utils/domain-separation'
+import SettingsUserPreferencesFields from '~/components/settings/SettingsUserPreferencesFields.vue'
 
 type SettingSource = 'env' | 'db' | 'none'
 type WebpQualitySource = 'env' | 'db' | 'default'
@@ -51,7 +52,7 @@ const router = useRouter()
 
 const allowedTabs = computed(() => (isAdmin.value ? ADMIN_SETTINGS_TABS : USER_SETTINGS_TABS))
 
-const defaultTab = computed<SettingsTab>(() => (isAdmin.value ? 'basic' : 'logs'))
+const defaultTab = computed<SettingsTab>(() => (isAdmin.value ? 'basic' : 'tags'))
 
 function parseTab(value: unknown): SettingsTab | null {
   if (typeof value !== 'string') return null
@@ -69,26 +70,53 @@ const activeTab = computed<SettingsTab>({
 
 const sidebarItems = computed(() => {
   const labels: Record<SettingsTab, { label: string, icon: string }> = {
-    basic: { label: t('settings.navBasic'), icon: 'i-lucide-sliders-horizontal' },
+    basic: { label: t('settings.navBasic'), icon: 'i-lucide-settings' },
     domains: { label: t('settings.navDomains'), icon: 'i-lucide-globe' },
     access: { label: t('settings.navAccess'), icon: 'i-lucide-shield' },
+    tags: { label: t('settings.navTags'), icon: 'i-lucide-tags' },
     logs: { label: t('settings.navLogs'), icon: 'i-lucide-scroll-text' }
   }
   return allowedTabs.value.map(id => ({ id, ...labels[id] }))
+})
+
+const tabPageHeader = computed(() => {
+  const headers: Record<SettingsTab, { icon: string, title: string, subtitle: string }> = {
+    basic: {
+      icon: 'i-lucide-settings',
+      title: t('settings.navBasic'),
+      subtitle: t('settings.pageSubtitleBasic')
+    },
+    domains: {
+      icon: 'i-lucide-globe',
+      title: t('settings.navDomains'),
+      subtitle: t('settings.pageSubtitleDomains')
+    },
+    access: {
+      icon: 'i-lucide-shield',
+      title: t('settings.navAccess'),
+      subtitle: t('settings.pageSubtitleAccess')
+    },
+    tags: {
+      icon: 'i-lucide-tags',
+      title: t('settings.navTags'),
+      subtitle: t('settings.pageSubtitleTags')
+    },
+    logs: {
+      icon: 'i-lucide-scroll-text',
+      title: t('settings.navLogs'),
+      subtitle: t('settings.pageSubtitleLogs')
+    }
+  }
+  return headers[activeTab.value]
 })
 
 const showSaveBar = computed(() =>
   isAdmin.value && ['basic', 'domains', 'access'].includes(activeTab.value)
 )
 
-const pageSubtitle = computed(() => {
-  if (activeTab.value === 'basic') {
-    return t('settings.pageSubtitleBasic')
-  }
-  return t('settings.pageSubtitle')
-})
-
 const checkingRelease = ref(false)
+const { resetToDefaults: resetUploadPreferences } = useUploadPreferences()
+const { load: reloadUserSettings } = useUserAutoDeleteSettings()
 
 const domainSeparationDocUrl = computed(() =>
   locale.value === 'en'
@@ -339,21 +367,33 @@ async function checkLatestRelease(options: { notify?: boolean, refresh?: boolean
 }
 
 const loginVerificationOptions = computed(() => [
-  { value: 'slider' as const, label: t('settings.loginVerificationSlider') },
-  { value: 'turnstile' as const, label: t('settings.loginVerificationTurnstile') },
-  { value: 'cap' as const, label: t('settings.loginVerificationCap') }
+  {
+    value: 'slider' as const,
+    label: t('settings.loginVerificationSlider'),
+    description: t('settings.loginVerificationSliderHint')
+  },
+  {
+    value: 'turnstile' as const,
+    label: t('settings.loginVerificationTurnstile'),
+    description: t('settings.loginVerificationTurnstileHint')
+  },
+  {
+    value: 'cap' as const,
+    label: t('settings.loginVerificationCap'),
+    description: t('settings.loginVerificationCapHint')
+  }
 ])
 
-const loginVerificationHint = computed(() => {
-  switch (loginVerificationMethodDraft.value) {
-    case 'turnstile':
-      return t('settings.loginVerificationTurnstileHint')
-    case 'cap':
-      return t('settings.loginVerificationCapHint')
-    default:
-      return t('settings.loginVerificationSliderHint')
+function restoreDefaults() {
+  if (activeTab.value === 'basic') {
+    resetUploadPreferences()
+    void reloadUserSettings()
   }
-})
+  if (settings.value) {
+    applySettings(settings.value)
+  }
+  toast.add({ title: t('settings.restoredDefaults'), color: 'success' })
+}
 
 async function loadPage() {
   if (isAdmin.value) {
@@ -427,23 +467,22 @@ watch(isAdmin, () => {
           <SettingsSidebar
             v-model="activeTab"
             :items="sidebarItems"
-            :title="t('settings.pageTitle')"
-            :subtitle="pageSubtitle"
           />
 
           <div class="flex min-w-0 flex-1 flex-col bg-default">
-            <div
-              class="flex-1"
-              :class="activeTab === 'logs' ? '' : 'p-4 sm:p-5'"
-            >
+            <div class="flex-1 p-5 text-sm sm:p-6">
+              <SettingsPageHeader
+                v-if="activeTab !== 'logs'"
+                :icon="tabPageHeader.icon"
+                :title="tabPageHeader.title"
+                :subtitle="tabPageHeader.subtitle"
+              />
+
               <div
                 v-if="activeTab === 'basic' && isAdmin"
               >
                 <SettingsPanel v-if="settings">
-                  <SettingsSection
-                    :title="t('settings.featureToggles')"
-                    :hint="t('settings.featureTogglesHint')"
-                  >
+                  <SettingsSection :title="t('settings.featureToggles')">
                     <SettingsGroup>
                       <SettingsToggleRow
                         v-model="allowRegistrationDraft"
@@ -455,31 +494,17 @@ watch(isAdmin, () => {
 
                   <SettingsUserPreferencesFields />
 
-                  <SettingsSection
-                    :title="t('settings.systemInfo')"
-                    :hint="t('settings.systemInfoHint')"
-                  >
-                    <template
-                      v-if="isAdmin"
-                      #action
-                    >
-                      <UButton
-                        :label="t('settings.checkUpdate')"
-                        icon="i-lucide-refresh-cw"
-                        variant="outline"
-                        color="neutral"
-                        size="sm"
-                        class="shrink-0"
-                        :loading="checkingRelease"
-                        @click="checkLatestRelease({ notify: true, refresh: true })"
+                  <SettingsSection :title="t('settings.systemInfo')">
+                    <SettingsGroup>
+                      <SettingsSystemInfo
+                        :app-version="settings.appVersion"
+                        :update-available="!!releaseCheck?.updateAvailable"
+                        :latest-version="releaseCheck?.latestVersion ?? null"
+                        :release-url="releaseCheck?.releaseUrl ?? null"
+                        :checking="checkingRelease"
+                        @check-update="checkLatestRelease({ notify: true, refresh: true })"
                       />
-                    </template>
-                    <SettingsSystemInfo
-                      :app-version="settings.appVersion"
-                      :update-available="!!releaseCheck?.updateAvailable"
-                      :latest-version="releaseCheck?.latestVersion ?? null"
-                      :release-url="releaseCheck?.releaseUrl ?? null"
-                    />
+                    </SettingsGroup>
                   </SettingsSection>
                 </SettingsPanel>
                 <div
@@ -498,50 +523,60 @@ watch(isAdmin, () => {
               >
                 <SettingsPanel v-if="settings">
                   <SettingsSection :title="t('settings.domainSettings')">
-                    <p
-                      v-if="settings.runtime.currentOrigin"
-                      class="mb-3 pl-3 text-xs text-primary"
-                    >
-                      {{ t('settings.runtimeDetected', { url: settings.runtime.currentOrigin }) }}
-                    </p>
-                    <SettingsGroup>
+                    <div class="divide-y divide-default">
+                      <p
+                        v-if="settings.runtime.currentOrigin"
+                        class="py-4 text-xs text-primary"
+                      >
+                        <span class="rounded-lg bg-primary/5 px-3 py-2 inline-block">
+                          {{ t('settings.runtimeDetected', { url: settings.runtime.currentOrigin }) }}
+                        </span>
+                      </p>
                       <SettingsToggleRow
                         :model-value="domainSeparationDraft"
                         :title="t('setup.domainSeparation')"
                         :hint="t('setup.domainSeparationHint')"
                         @update:model-value="onDomainSeparationDraftChange"
                       />
-                    </SettingsGroup>
+                      <div
+                        v-if="domainSeparationDraft"
+                        class="py-4"
+                      >
+                        <div class="flex flex-col gap-3 rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 sm:flex-row sm:items-start">
+                          <UIcon
+                            name="i-lucide-triangle-alert"
+                            class="mt-0.5 size-4 shrink-0 text-warning"
+                          />
+                          <div class="min-w-0 flex-1">
+                            <p class="text-sm font-medium text-warning">
+                              {{ t('settings.domainSeparationProxyTitle') }}
+                            </p>
+                            <p class="mt-1 text-xs leading-relaxed text-warning/90">
+                              {{ t('settings.domainSeparationProxyBody') }}
+                            </p>
+                          </div>
+                          <a
+                            :href="domainSeparationDocUrl"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="shrink-0 text-xs text-primary hover:underline sm:pt-0.5"
+                          >
+                            {{ t('setup.domainSeparationProxyExample') }} →
+                          </a>
+                        </div>
+                        <UAlert
+                          v-if="settings.runtime.hostRole === 'unknown'"
+                          color="warning"
+                          variant="subtle"
+                          icon="i-lucide-triangle-alert"
+                          :title="t('settings.hostRoleUnknown')"
+                          class="mt-4"
+                        />
+                      </div>
+                    </div>
                   </SettingsSection>
 
-                  <p
-                    v-if="domainSeparationDraft"
-                    class="rounded-xl border border-warning/25 bg-warning/5 px-4 py-3 text-xs leading-relaxed text-warning"
-                  >
-                    {{ t('setup.domainSeparationProxyHint') }}
-                    <a
-                      :href="domainSeparationDocUrl"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="text-primary hover:underline"
-                    >
-                      {{ t('setup.domainSeparationProxyExample') }}
-                    </a>
-                  </p>
-
-                  <UAlert
-                    v-if="domainSeparationDraft && settings.runtime.hostRole === 'unknown'"
-                    color="warning"
-                    variant="subtle"
-                    icon="i-lucide-triangle-alert"
-                    :title="t('settings.hostRoleUnknown')"
-                    class="mb-4"
-                  />
-
-                  <SettingsSection
-                    :title="t('settings.pathAndLink')"
-                    :hint="t('settings.pathAndLinkHint')"
-                  >
+                  <SettingsSection :title="t('settings.pathAndLink')">
                     <SettingsGroup>
                       <SettingsToggleRow
                         :model-value="hideFolderInUrlDraft"
@@ -590,33 +625,34 @@ watch(isAdmin, () => {
                     </SettingsGroup>
                   </SettingsSection>
 
-                  <SettingsSection :title="t('settings.imageBaseUrl')">
+                  <SettingsSection :title="t('settings.imageDomainSection')">
                     <div
                       v-if="domainSeparationDraft"
-                      class="grid gap-4 sm:grid-cols-2"
+                      class="grid gap-4 sm:grid-cols-2 sm:divide-x sm:divide-default"
                     >
                       <SettingsGroup>
-                        <div class="space-y-3 px-4 py-4 sm:px-5">
+                        <div class="space-y-3 py-4 sm:pr-4">
                           <div class="flex flex-wrap items-center gap-2">
                             <p class="text-sm font-medium text-highlighted">
                               {{ t('settings.siteBaseUrl') }}
                             </p>
                             <UBadge
-                              :color="sourceBadge(settings.siteBaseUrlSource).color"
+                              color="success"
                               variant="subtle"
                               size="xs"
                             >
-                              {{ sourceBadge(settings.siteBaseUrlSource).label }}
+                              {{ t('settings.badgeEnabled') }}
                             </UBadge>
                           </div>
                           <p class="text-xs leading-relaxed text-muted">
-                            {{ t('settings.siteBaseUrlHint') }}
+                            {{ t('settings.siteBaseUrlRoleHint') }}
                           </p>
                           <div class="flex gap-2">
                             <UInput
                               v-model="siteBaseUrlDraft"
+                              size="sm"
                               :placeholder="t('settings.siteBaseUrlPlaceholder')"
-                              class="min-w-0 flex-1 font-mono text-sm"
+                              class="min-w-0 flex-1 font-mono"
                             />
                             <UButton
                               v-if="settings.runtime.currentOrigin"
@@ -630,7 +666,7 @@ watch(isAdmin, () => {
                           </div>
                           <p
                             v-if="settings.effectiveSiteBaseUrl"
-                            class="truncate text-xs text-muted"
+                            class="truncate rounded-lg bg-muted/30 px-3 py-2 text-xs text-muted"
                             :title="settings.effectiveSiteBaseUrl"
                           >
                             {{ t('settings.siteBaseUrlActive', { url: settings.effectiveSiteBaseUrl }) }}
@@ -639,30 +675,31 @@ watch(isAdmin, () => {
                       </SettingsGroup>
 
                       <SettingsGroup>
-                        <div class="space-y-3 px-4 py-4 sm:px-5">
+                        <div class="space-y-3 py-4 sm:pl-4">
                           <div class="flex flex-wrap items-center gap-2">
                             <p class="text-sm font-medium text-highlighted">
                               {{ t('settings.imageBaseUrl') }}
                             </p>
                             <UBadge
-                              :color="sourceBadge(settings.imageBaseUrlSource).color"
+                              color="success"
                               variant="subtle"
                               size="xs"
                             >
-                              {{ sourceBadge(settings.imageBaseUrlSource).label }}
+                              {{ t('settings.badgeEnabled') }}
                             </UBadge>
                           </div>
                           <p class="text-xs leading-relaxed text-muted">
-                            {{ t('settings.imageBaseUrlHint') }}
+                            {{ t('settings.imageBaseUrlRoleHint') }}
                           </p>
                           <UInput
                             v-model="imageBaseUrlDraft"
+                            size="sm"
                             :placeholder="t('settings.imageBaseUrlPlaceholder')"
-                            class="w-full font-mono text-sm"
+                            class="w-full font-mono"
                           />
                           <p
                             v-if="settings.effectiveImageBaseUrl"
-                            class="truncate text-xs text-muted"
+                            class="truncate rounded-lg bg-muted/30 px-3 py-2 text-xs text-muted"
                             :title="settings.effectiveImageBaseUrl"
                           >
                             {{ t('settings.imageBaseUrlActive', { url: settings.effectiveImageBaseUrl }) }}
@@ -672,7 +709,7 @@ watch(isAdmin, () => {
                     </div>
 
                     <SettingsGroup v-else>
-                      <div class="space-y-3 px-4 py-4 sm:px-5">
+                      <div class="space-y-3 py-4">
                         <div class="flex flex-wrap items-center gap-2">
                           <p class="text-sm font-medium text-highlighted">
                             {{ t('settings.imageBaseUrl') }}
@@ -698,12 +735,13 @@ watch(isAdmin, () => {
                         </p>
                         <UInput
                           v-model="imageBaseUrlDraft"
+                          size="sm"
                           :placeholder="t('settings.imageBaseUrlPlaceholder')"
-                          class="w-full font-mono text-sm"
+                          class="w-full font-mono"
                         />
                         <p
                           v-if="settings.effectiveImageBaseUrl"
-                          class="truncate text-xs text-muted"
+                          class="truncate rounded-lg bg-muted/30 px-3 py-2 text-xs text-muted"
                           :title="settings.effectiveImageBaseUrl"
                         >
                           {{ t('settings.imageBaseUrlActive', { url: settings.effectiveImageBaseUrl }) }}
@@ -728,98 +766,89 @@ watch(isAdmin, () => {
                 class="settings-referer-section"
               >
                 <SettingsPanel v-if="settings">
-                  <div class="flex items-start gap-3">
-                    <div class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                      <UIcon
-                        name="i-lucide-shield"
-                        class="size-4 text-primary"
-                      />
-                    </div>
-                    <div class="min-w-0 flex-1">
-                      <div class="flex flex-wrap items-center gap-2">
-                        <h2 class="text-sm font-semibold text-highlighted">
-                          {{ t('settings.accessControl') }}
-                        </h2>
-                        <UBadge
-                          :color="refererDraft.trim() ? 'success' : 'neutral'"
-                          variant="subtle"
-                          size="xs"
-                        >
-                          {{ refererDraft.trim() ? t('settings.refererEnabled') : t('settings.refererUnrestricted') }}
-                        </UBadge>
-                      </div>
-                      <p class="mt-1 text-xs leading-relaxed text-muted">
-                        {{ t('settings.refererHint') }}
-                      </p>
-                    </div>
-                  </div>
+                  <SettingsPlainSection
+                    :title="t('settings.refererProtection')"
+                    :hint="t('settings.refererHint')"
+                  >
+                    <template #badge>
+                      <UBadge
+                        :color="refererDraft.trim() ? 'success' : 'neutral'"
+                        variant="subtle"
+                        size="xs"
+                      >
+                        {{ refererDraft.trim() ? t('settings.refererEnabled') : t('settings.refererUnrestricted') }}
+                      </UBadge>
+                    </template>
 
-                  <div class="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_12rem] xl:grid-cols-[minmax(0,1fr)_14rem]">
-                    <div class="min-w-0 space-y-2">
-                      <label class="text-sm font-medium text-highlighted">
-                        {{ t('settings.refererDomainsLabel') }}
-                      </label>
-                      <UTextarea
-                        v-model="refererDraft"
-                        :placeholder="t('settings.refererPlaceholder')"
-                        :rows="7"
-                        :autoresize="false"
-                        class="settings-referer-field w-full font-mono text-sm"
-                      />
-                      <div class="flex gap-2 rounded-lg border border-info/20 bg-info/5 px-3 py-2.5 text-xs leading-relaxed text-muted">
-                        <UIcon
-                          name="i-lucide-info"
-                          class="mt-0.5 size-3.5 shrink-0 text-info"
+                    <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_12rem] xl:grid-cols-[minmax(0,1fr)_14rem]">
+                      <div class="min-w-0 space-y-3">
+                        <label class="block text-sm font-medium text-highlighted">
+                          {{ t('settings.refererDomainsLabel') }}
+                        </label>
+                        <UTextarea
+                          v-model="refererDraft"
+                          size="sm"
+                          :placeholder="t('settings.refererPlaceholder')"
+                          :rows="7"
+                          :autoresize="false"
+                          class="settings-referer-field w-full font-mono"
                         />
-                        <span>{{ t('settings.refererTip') }}</span>
+                        <div class="flex gap-2 rounded-lg border border-info/20 bg-info/5 px-3 py-2.5 text-xs leading-relaxed text-muted">
+                          <UIcon
+                            name="i-lucide-info"
+                            class="mt-0.5 size-3.5 shrink-0 text-info"
+                          />
+                          <span>{{ t('settings.refererTip') }}</span>
+                        </div>
                       </div>
-                    </div>
 
-                    <div class="space-y-3 border-l border-default pl-4">
-                      <div>
-                        <p class="text-xs font-medium text-highlighted">
-                          {{ t('settings.refererExamplesTitle') }}
-                        </p>
-                        <p class="mt-2 font-mono text-xs text-muted">
-                          {{ t('settings.refererExamplesSample') }}
-                        </p>
-                      </div>
-                      <div>
-                        <p class="text-xs font-medium text-highlighted">
-                          {{ t('settings.refererScenarioTitle') }}
-                        </p>
-                        <p class="mt-1 text-xs leading-relaxed text-muted">
-                          {{ t('settings.refererScenarioDesc') }}
-                        </p>
+                      <div class="space-y-4 border-l border-default pl-4">
+                        <div>
+                          <p class="text-sm font-medium text-highlighted">
+                            {{ t('settings.refererExamplesTitle') }}
+                          </p>
+                          <p class="mt-2 font-mono text-xs text-muted">
+                            {{ t('settings.refererExamplesSample') }}
+                          </p>
+                        </div>
+                        <div>
+                          <p class="text-sm font-medium text-highlighted">
+                            {{ t('settings.refererScenarioTitle') }}
+                          </p>
+                          <ul class="mt-2 list-disc space-y-1 pl-4 text-xs leading-relaxed text-muted">
+                            <li>{{ t('settings.refererScenario1') }}</li>
+                            <li>{{ t('settings.refererScenario2') }}</li>
+                            <li>{{ t('settings.refererScenario3') }}</li>
+                            <li>{{ t('settings.refererScenario4') }}</li>
+                          </ul>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  </SettingsPlainSection>
 
                   <SettingsSection
                     :title="t('settings.loginVerification')"
                     :hint="t('settings.loginVerificationHint')"
                   >
                     <SettingsGroup>
-                      <div class="space-y-4 px-4 py-4 sm:px-5">
-                        <URadioGroup
-                          v-model="loginVerificationMethodDraft"
-                          :items="loginVerificationOptions"
-                        />
-                        <p class="text-xs leading-relaxed text-muted">
-                          {{ loginVerificationHint }}
-                        </p>
-                        <div
-                          v-if="loginVerificationMethodDraft === 'turnstile'"
-                          class="space-y-3 rounded-xl border border-default bg-muted/20 p-4"
-                        >
+                      <SettingsRadioGroup
+                        v-model="loginVerificationMethodDraft"
+                        :items="loginVerificationOptions"
+                      />
+                      <div
+                        v-if="loginVerificationMethodDraft === 'turnstile'"
+                        class="py-4"
+                      >
+                        <div class="space-y-3 rounded-xl border border-default bg-muted/20 p-4">
                           <div class="space-y-2">
                             <label class="text-sm font-medium text-highlighted">
                               {{ t('settings.turnstileSiteKey') }}
                             </label>
                             <UInput
                               v-model="turnstileSiteKeyDraft"
+                              size="sm"
                               :placeholder="t('settings.turnstileSiteKeyPlaceholder')"
-                              class="w-full font-mono text-sm"
+                              class="w-full font-mono"
                             />
                           </div>
                           <div class="space-y-2">
@@ -829,23 +858,27 @@ watch(isAdmin, () => {
                             <UInput
                               v-model="turnstileSecretKeyDraft"
                               type="password"
+                              size="sm"
                               :placeholder="t('settings.turnstileSecretKeyPlaceholder')"
-                              class="w-full font-mono text-sm"
+                              class="w-full font-mono"
                             />
                           </div>
                         </div>
-                        <div
-                          v-else-if="loginVerificationMethodDraft === 'cap'"
-                          class="space-y-3 rounded-xl border border-default bg-muted/20 p-4"
-                        >
+                      </div>
+                      <div
+                        v-else-if="loginVerificationMethodDraft === 'cap'"
+                        class="py-4"
+                      >
+                        <div class="space-y-3 rounded-xl border border-default bg-muted/20 p-4">
                           <div class="space-y-2">
                             <label class="text-sm font-medium text-highlighted">
                               {{ t('settings.capApiEndpoint') }}
                             </label>
                             <UInput
                               v-model="capApiEndpointDraft"
+                              size="sm"
                               :placeholder="t('settings.capApiEndpointPlaceholder')"
-                              class="w-full font-mono text-sm"
+                              class="w-full font-mono"
                             />
                           </div>
                           <div class="space-y-2">
@@ -855,8 +888,9 @@ watch(isAdmin, () => {
                             <UInput
                               v-model="capSecretDraft"
                               type="password"
+                              size="sm"
                               :placeholder="t('settings.capSecretKeyPlaceholder')"
-                              class="w-full font-mono text-sm"
+                              class="w-full font-mono"
                             />
                           </div>
                         </div>
@@ -875,6 +909,8 @@ watch(isAdmin, () => {
                 </div>
               </div>
 
+              <SettingsTagsPanel v-else-if="activeTab === 'tags'" />
+
               <SettingsLogsPanel v-else-if="activeTab === 'logs'" />
             </div>
 
@@ -883,6 +919,7 @@ watch(isAdmin, () => {
               :has-changes="hasServerChanges"
               :saving="savingServer"
               @save="saveServerSettings"
+              @restore="restoreDefaults"
             />
           </div>
         </div>

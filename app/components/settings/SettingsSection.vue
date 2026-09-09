@@ -6,8 +6,8 @@ defineProps<{
 </script>
 
 <template>
-  <section class="space-y-4">
-    <div class="flex items-start justify-between gap-4">
+  <section class="overflow-hidden rounded-xl border border-default bg-default">
+    <div class="flex items-start justify-between gap-4 px-4 py-3">
       <div class="min-w-0">
         <div class="flex items-center gap-2">
           <span
@@ -32,6 +32,8 @@ defineProps<{
         <slot name="action" />
       </div>
     </div>
-    <slot />
+    <div class="border-t border-default px-4">
+      <slot />
+    </div>
   </section>
 </template>

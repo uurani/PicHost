@@ -2,6 +2,8 @@
 
 PicHost exposes REST endpoints and a Twikoo-compatible upload. After sign-in, open **API** in the nav: a sidebar lists endpoints and token controls, the center shows parameters and copyable cURL, and the right panel supports **live debugging**.
 
+![API docs and debugger](/screenshots/api.png)
+
 ## Authentication
 
 All REST calls use:
@@ -28,8 +30,11 @@ Upload one or more images via `image`; also accepts `file`, `files`. Stored unde
 ```bash
 curl -X POST "https://admin.example.com/api/images/upload" \
   -H "Auth-Token: YOUR_TOKEN" \
-  -F "image=@./demo.png"
+  -F "image=@./demo.png" \
+  -F 'tagIds=[1,2]'
 ```
+
+Optional form field `tagIds`: JSON array string or repeated fields. Tags do **not** change storage paths under `images/`.
 
 ### 2. List images
 
@@ -41,6 +46,8 @@ Paginated gallery. `limit` default 20, max 100.
 curl "https://admin.example.com/api/images?limit=20&page=1" \
   -H "Auth-Token: YOUR_TOKEN"
 ```
+
+Optional query: `tagIds` (comma-separated, OR by default), `tagMode=and`, `untagged=1`. Each item includes a `tags` array.
 
 ### 3. Search images
 
@@ -76,6 +83,27 @@ curl -X POST "https://admin.example.com/api/images/batch-delete" \
   -H "Content-Type: application/json" \
   -d '{"keys":["images/2026/08/a.webp","images/2026/08/b.webp"]}'
 ```
+
+### 6. Tags
+
+| Method | Path | Description |
+| ------ | ---- | ----------- |
+| `GET` | `/api/tags` | List current user’s tags |
+| `POST` | `/api/tags` | Create `{ "name": "work", "color": "#22c55e" }` |
+| `PATCH` | `/api/tags/:id` | Rename or recolor |
+| `DELETE` | `/api/tags/:id` | Delete tag (images remain) |
+| `POST` | `/api/tags/merge` | Merge tags into a target |
+
+### 7. Image tags
+
+| Method | Path | Description |
+| ------ | ---- | ----------- |
+| `POST` | `/api/images/tags` | Add tags to an image |
+| `PATCH` | `/api/images/tags` | Replace tag set |
+| `DELETE` | `/api/images/tags` | Remove one tag |
+| `POST` | `/api/images/batch-tags` | Batch add/remove |
+
+`GET /api/stats` accepts the same tag filter query params as the list API.
 
 ## Errors
 

@@ -4,6 +4,7 @@ import { getDb, getUploadSourcesForKeys } from './db'
 import { getDataDir } from './data-dir'
 import { contentTypeFromKey } from './content-type'
 import { DEFAULT_FOLDER, toCanonicalImageKey, validateImageKey } from './image-key'
+import { buildTagFilterSql, type TagFilterInput } from './tags'
 import { isBareImageFilename, isHiddenImageDatePath } from './image-public-path'
 import {
   ensureDefaultBackends,
@@ -406,7 +407,8 @@ export function updateImageBackendId(key: string, backendId: string): void {
 
 export async function countImages(
   userFilter?: number | 'admin',
-  backendId?: string
+  backendId?: string,
+  tagFilter?: TagFilterInput
 ): Promise<number> {
   ensureStorageSchema()
   const params: Array<string | number> = []
@@ -414,8 +416,9 @@ export async function countImages(
 
   const userSql = buildUserFilterSql(userFilter, params)
   const backendSql = buildBackendFilterSql(backendId, params)
+  const tagSql = buildTagFilterSql(tagFilter, params)
   const row = getDb().prepare(`
-    SELECT COUNT(*) AS count FROM images WHERE ${clauses.join(' AND ')}${userSql}${backendSql}
+    SELECT COUNT(*) AS count FROM images WHERE ${clauses.join(' AND ')}${userSql}${backendSql}${tagSql}
   `).get(...params) as { count: number }
 
   return row.count
@@ -462,6 +465,7 @@ export async function listImages(options: {
   backendId?: string
   contentType?: string
   uploadSource?: 'web' | 'api'
+  tagFilter?: TagFilterInput
 }): Promise<PaginatedResult<StoredImage>> {
   ensureStorageSchema()
   const params: Array<string | number> = []
@@ -469,10 +473,11 @@ export async function listImages(options: {
 
   const userSql = buildUserFilterSql(options.userFilter, params)
   const backendSql = buildBackendFilterSql(options.backendId, params)
+  const tagSql = buildTagFilterSql(options.tagFilter, params)
   const rows = getDb().prepare(`
     SELECT key, backend_id, user_id, folder, original_name, content_type, size, uploaded_at
     FROM images
-    WHERE ${clauses.join(' AND ')}${userSql}${backendSql}
+    WHERE ${clauses.join(' AND ')}${userSql}${backendSql}${tagSql}
     ORDER BY uploaded_at DESC, key DESC
   `).all(...params) as unknown as ImageIndexRow[]
 
@@ -495,6 +500,7 @@ export async function searchImages(options: {
   backendId?: string
   contentType?: string
   uploadSource?: 'web' | 'api'
+  tagFilter?: TagFilterInput
 }): Promise<PaginatedResult<StoredImage>> {
   ensureStorageSchema()
   const needle = options.query.trim().toLowerCase()
@@ -503,10 +509,11 @@ export async function searchImages(options: {
 
   const userSql = buildUserFilterSql(options.userFilter, params)
   const backendSql = buildBackendFilterSql(options.backendId, params)
+  const tagSql = buildTagFilterSql(options.tagFilter, params)
   const rows = getDb().prepare(`
     SELECT key, backend_id, user_id, folder, original_name, content_type, size, uploaded_at
     FROM images
-    WHERE ${clauses.join(' AND ')}${userSql}${backendSql}
+    WHERE ${clauses.join(' AND ')}${userSql}${backendSql}${tagSql}
     ORDER BY uploaded_at DESC, key DESC
   `).all(...params) as unknown as ImageIndexRow[]
 
@@ -528,16 +535,18 @@ export async function searchImages(options: {
 }
 
 export async function getFolderStorageStats(
-  userFilter?: number | 'admin'
+  userFilter?: number | 'admin',
+  tagFilter?: TagFilterInput
 ): Promise<Array<{ folder: string, count: number, bytes: number }>> {
   ensureStorageSchema()
   const params: Array<string | number> = []
   const userSql = buildUserFilterSql(userFilter, params)
+  const tagSql = buildTagFilterSql(tagFilter, params)
 
   const rows = getDb().prepare(`
     SELECT folder, COUNT(*) AS count, COALESCE(SUM(size), 0) AS bytes
     FROM images
-    WHERE 1=1${userSql}
+    WHERE 1=1${userSql}${tagSql}
     GROUP BY folder
     ORDER BY bytes DESC, folder ASC
   `).all(...params) as Array<{ folder: string, count: number, bytes: number }>
@@ -572,7 +581,10 @@ function startOfYesterdayIsoInShanghai(now = new Date()): string {
   return new Date(new Date(startOfDay).getTime() - 24 * 60 * 60 * 1000).toISOString()
 }
 
-export async function getUserScopedStorageStats(userId: number): Promise<{
+export async function getUserScopedStorageStats(
+  userId: number,
+  tagFilter?: TagFilterInput
+): Promise<{
   storedCount: number
   uploadBytesTotal: number
   uploadToday: number
@@ -587,11 +599,13 @@ export async function getUserScopedStorageStats(userId: number): Promise<{
   const startOfYesterday = startOfYesterdayIsoInShanghai()
   const startOfLastMonth = startOfLastMonthIsoInShanghai()
 
+  const params: Array<string | number> = [userId]
+  const tagSql = buildTagFilterSql(tagFilter, params)
   const rows = getDb().prepare(`
     SELECT folder, size, uploaded_at
     FROM images
-    WHERE user_id = ?
-  `).all(userId) as Array<{ folder: string, size: number, uploaded_at: string }>
+    WHERE user_id = ?${tagSql}
+  `).all(...params) as Array<{ folder: string, size: number, uploaded_at: string }>
 
   const map = new Map<string, { count: number, bytes: number }>()
   let uploadBytesTotal = 0

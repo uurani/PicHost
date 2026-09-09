@@ -19,22 +19,22 @@ const {
 const copyFormatItems = computed(() => [
   { label: t('copy.url'), value: 'url' as const },
   { label: t('copy.markdown'), value: 'markdown' as const },
-  { label: t('copy.html'), value: 'html' as const }
+  { label: t('copy.html'), value: 'html' as const },
+  { label: t('copy.bbcode'), value: 'bbcode' as const }
 ])
 
-const clientQualityLevel = computed(() => {
-  if (clientWebpQuality.value >= 85) return t('preferences.qualityHigh')
-  if (clientWebpQuality.value >= 60) return t('preferences.qualityMedium')
-  return t('preferences.qualityLow')
-})
-
-function setCopyFormat(value: 'url' | 'markdown' | 'html') {
+function setCopyFormat(value: 'url' | 'markdown' | 'html' | 'bbcode') {
   copyFormat.value = value
 }
 
 function onClientQualityInput(event: Event) {
   const value = Number((event.target as HTMLInputElement).value)
   clientWebpQuality.value = Number.isFinite(value) ? value : 80
+}
+
+function onClientQualityNumberInput(value: string | number) {
+  const num = Number(value)
+  clientWebpQuality.value = Number.isFinite(num) ? Math.min(100, Math.max(1, Math.round(num))) : 80
 }
 
 onMounted(() => {
@@ -53,7 +53,7 @@ onMounted(() => {
       />
       <div
         v-if="userSettings"
-        class="flex items-start justify-between gap-4 px-4 py-4 sm:px-5"
+        class="flex items-start justify-between gap-4 py-4"
       >
         <div class="min-w-0 flex-1 pr-2">
           <p class="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm font-medium text-highlighted">
@@ -87,55 +87,61 @@ onMounted(() => {
           class="size-5 animate-spin text-muted"
         />
       </div>
-      <div class="px-4 py-4 sm:px-5">
-        <div class="flex items-start justify-between gap-4">
-          <div class="min-w-0 flex-1">
-            <p class="text-sm font-medium text-highlighted">
-              {{ t('preferences.webpQuality') }}
-            </p>
-            <p class="mt-1 text-xs leading-relaxed text-muted">
-              {{ t('preferences.webpQualityHint') }}
-            </p>
-          </div>
-          <div class="shrink-0 text-right text-xs text-muted">
-            <p>{{ t('preferences.current', { n: clientWebpQuality }) }}</p>
-            <p class="mt-0.5">
-              {{ clientQualityLevel }}
-            </p>
-          </div>
+      <div class="py-4">
+        <div class="min-w-0">
+          <p class="text-sm font-medium text-highlighted">
+            {{ t('preferences.webpQuality') }}
+          </p>
+          <p class="mt-1 text-xs leading-relaxed text-muted">
+            {{ t('preferences.webpQualityHint') }}
+          </p>
         </div>
-        <input
-          type="range"
-          min="1"
-          max="100"
-          :value="clientWebpQuality"
-          class="mt-3 h-1.5 w-full cursor-pointer appearance-none rounded-full bg-muted accent-primary"
-          @input="onClientQualityInput"
-        >
+        <div class="mt-3 flex items-center gap-3">
+          <input
+            type="range"
+            min="1"
+            max="100"
+            :value="clientWebpQuality"
+            class="h-1.5 min-w-0 flex-1 cursor-pointer appearance-none rounded-full bg-muted accent-primary"
+            @input="onClientQualityInput"
+          >
+          <UInput
+            :model-value="clientWebpQuality"
+            type="number"
+            min="1"
+            max="100"
+            size="xs"
+            class="w-14 shrink-0 tabular-nums"
+            @update:model-value="onClientQualityNumberInput"
+          />
+        </div>
       </div>
     </SettingsGroup>
   </SettingsSection>
 
-  <SettingsSection :title="t('settings.uploadConvenience')">
+  <SettingsSection :title="t('preferences.title')">
     <SettingsGroup>
       <SettingsToggleRow
         v-model="autoCopyMarkdown"
         :title="t('preferences.autoCopy')"
         :hint="t('preferences.autoCopyHint')"
       />
-      <div class="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+      <div class="py-4">
         <p class="text-sm font-medium text-highlighted">
           {{ t('settings.defaultCopyFormat') }}
         </p>
+        <p class="mt-1 text-xs leading-relaxed text-muted">
+          {{ t('settings.defaultCopyFormatHint') }}
+        </p>
         <div
-          class="flex w-full max-w-xs gap-1 rounded-lg border border-default p-0.5 sm:w-auto"
+          class="mt-3 flex w-full max-w-md gap-1 rounded-lg border border-default p-0.5"
           :class="autoCopyMarkdown ? '' : 'pointer-events-none opacity-40'"
         >
           <UButton
             v-for="item in copyFormatItems"
             :key="item.value"
             size="xs"
-            class="flex-1 justify-center sm:min-w-[4.5rem]"
+            class="flex-1 justify-center"
             :variant="copyFormat === item.value ? 'solid' : 'ghost'"
             :color="copyFormat === item.value ? 'primary' : 'neutral'"
             :label="item.label"

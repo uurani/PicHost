@@ -46,8 +46,16 @@ const {
   activeUploadSource,
   setActiveUploadSource,
   resetFilters,
-  loadStorageBackendOptions
+  loadStorageBackendOptions,
+  activeTagIds,
+  activeTagMode,
+  activeUntaggedOnly,
+  setActiveTagFilter,
+  toggleTagFilter,
+  listQueryParams
 } = useImageList()
+
+const { items: tagItems, fetchTags, batchUpdateTags } = useTags()
 
 const { isChecking, isAuthenticated, checkSession, handleAuthError, fetchStatus } = useAuth()
 const toast = useToast()
@@ -66,6 +74,7 @@ const showScrollTop = ref(false)
 const previewOpen = ref(false)
 const previewImage = ref<ImageItem | null>(null)
 const viewMode = ref<'grid' | 'list'>('grid')
+const batchTagOpen = ref(false)
 
 const currentUploadSource = ref('all')
 const currentStorageBackend = ref('all')
@@ -96,7 +105,8 @@ function scrollToTop() {
 
 async function fetchStats() {
   stats.value = await $fetch<StatsResponse>('/api/stats', {
-    credentials: 'include'
+    credentials: 'include',
+    query: listQueryParams()
   })
 }
 
@@ -131,7 +141,8 @@ async function refreshAll() {
     await Promise.all([
       fetchStats(),
       reloadGallery(),
-      loadStorageBackendOptions()
+      loadStorageBackendOptions(),
+      fetchTags()
     ])
     currentUploadSource.value = activeUploadSource.value
     currentStorageBackend.value = activeStorageBackend.value
@@ -174,9 +185,83 @@ async function handleResetFilters() {
   currentStorageBackend.value = 'all'
   try {
     await resetFilters()
+    await fetchStats()
   } catch (error: unknown) {
     handleAuthError(error)
   }
+}
+
+async function handleTagIdsChange(tagIds: number[]) {
+  if (!isAuthenticated.value) return
+  selectedKeys.value = new Set()
+  try {
+    await setActiveTagFilter({ tagIds, untaggedOnly: false })
+    await fetchStats()
+  } catch (error: unknown) {
+    handleAuthError(error)
+  }
+}
+
+async function handleTagModeChange(tagMode: 'or' | 'and') {
+  if (!isAuthenticated.value) return
+  try {
+    await setActiveTagFilter({ tagMode })
+    await fetchStats()
+  } catch (error: unknown) {
+    handleAuthError(error)
+  }
+}
+
+async function handleUntaggedOnlyChange(untaggedOnly: boolean) {
+  if (!isAuthenticated.value) return
+  selectedKeys.value = new Set()
+  try {
+    await setActiveTagFilter({ untaggedOnly, tagIds: [] })
+    await fetchStats()
+  } catch (error: unknown) {
+    handleAuthError(error)
+  }
+}
+
+async function handleTagFilterClick(tagId: number) {
+  if (!isAuthenticated.value) return
+  selectedKeys.value = new Set()
+  try {
+    await toggleTagFilter(tagId)
+    await fetchStats()
+  } catch (error: unknown) {
+    handleAuthError(error)
+  }
+}
+
+async function handleUntaggedFilterClick() {
+  if (!isAuthenticated.value) return
+  selectedKeys.value = new Set()
+  try {
+    await setActiveTagFilter({ untaggedOnly: true, tagIds: [] })
+    await fetchStats()
+  } catch (error: unknown) {
+    handleAuthError(error)
+  }
+}
+
+async function confirmBatchTags(tagIds: number[], action: 'add' | 'remove') {
+  const keys = Array.from(selectedKeys.value)
+  if (!keys.length || !tagIds.length) return
+  try {
+    await batchUpdateTags(keys, tagIds, action)
+    batchTagOpen.value = false
+    selectedKeys.value = new Set()
+    toast.add({ title: t('tags.batchSuccess'), color: 'success' })
+    await Promise.all([reloadGallery(), fetchStats(), fetchTags(true)])
+  } catch (error: unknown) {
+    handleAuthError(error)
+    toast.add({ title: t('tags.batchFailed'), color: 'error' })
+  }
+}
+
+function goToTagSettings() {
+  void navigateTo({ path: '/settings', query: { tab: 'tags' } })
 }
 
 function updateSelectedKeys(keys: Set<string>) {
@@ -398,16 +483,26 @@ watch(isAuthenticated, async (authed, prev) => {
             :storage-backend-items="storageBackendItems"
             :upload-source="currentUploadSource"
             :upload-source-items="uploadSourceItems"
+            :tag-ids="activeTagIds"
+            :tag-mode="activeTagMode"
+            :untagged-only="activeUntaggedOnly"
+            :tags="tagItems"
             :view-mode="viewMode"
             :selected-count="selectedCount"
             :loading="galleryLoading"
             :show-batch-delete="true"
+            :show-batch-tags="selectedCount > 0"
             @update:storage-backend="handleStorageBackendChange"
             @update:upload-source="handleUploadSourceChange"
+            @update:tag-ids="handleTagIdsChange"
+            @update:tag-mode="handleTagModeChange"
+            @update:untagged-only="handleUntaggedOnlyChange"
             @update:view-mode="viewMode = $event"
             @search="handleSearch"
             @reset="handleResetFilters"
             @batch-delete="requestBatchDelete"
+            @batch-tags="batchTagOpen = true"
+            @manage-tags="goToTagSettings"
           />
         </div>
 
@@ -429,6 +524,7 @@ watch(isAuthenticated, async (authed, prev) => {
           gallery
           :show-key="false"
           show-storage
+          show-tags
           :items="items"
           :selected-keys="selectedKeys"
           :selectable="true"
@@ -436,11 +532,14 @@ watch(isAuthenticated, async (authed, prev) => {
           @update:selected-keys="updateSelectedKeys"
           @preview="openPreview"
           @delete="(image) => requestDelete(image.key)"
+          @tag-click="handleTagFilterClick"
+          @untagged-click="handleUntaggedFilterClick"
         />
 
         <GalleryImageList
           v-else
           show-storage
+          show-tags
           :items="items"
           :selected-keys="selectedKeys"
           :selectable="true"
@@ -448,12 +547,15 @@ watch(isAuthenticated, async (authed, prev) => {
           @update:selected-keys="updateSelectedKeys"
           @preview="openPreview"
           @delete="(image) => requestDelete(image.key)"
+          @tag-click="handleTagFilterClick"
+          @untagged-click="handleUntaggedFilterClick"
         />
 
         <ImagePreviewModal
           v-model:open="previewOpen"
           :image="previewImage"
           show-storage
+          show-tags
           :deleting="previewImage ? deletingKeys.has(previewImage.key) : false"
           :allow-delete="true"
           @delete="requestPreviewDelete"
@@ -477,6 +579,13 @@ watch(isAuthenticated, async (authed, prev) => {
         :count="deleteTargetKeys.length"
         :loading="batchDeleting"
         @confirm="confirmDelete"
+      />
+
+      <BatchTagModal
+        v-model:open="batchTagOpen"
+        :tags="tagItems"
+        :selected-count="selectedCount"
+        @confirm="confirmBatchTags"
       />
 
       <UButton

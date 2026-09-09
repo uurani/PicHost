@@ -12,6 +12,7 @@ import {
 } from '../../utils/process-image-upload'
 import { createApiError } from '../../utils/api-error'
 import { checkUploadRateLimit } from '../../utils/rate-limit'
+import { parseTagIdsParam } from '../../utils/tags'
 
 export default defineEventHandler(async (event) => {
   await requireUploadAuth(event)
@@ -29,6 +30,25 @@ export default defineEventHandler(async (event) => {
 
   const source = verifyApiUploadToken(event) ? 'api' : 'web'
   const uploadUserId = await getUploadUserId(event)
+
+  const tagIdsField = formData.find(part => part.name === 'tagIds')
+  let uploadTagIds: number[] = []
+  if (tagIdsField?.data?.length) {
+    const raw = new TextDecoder().decode(tagIdsField.data).trim()
+    try {
+      const parsed = JSON.parse(raw) as unknown
+      uploadTagIds = parseTagIdsParam(parsed)
+    } catch {
+      uploadTagIds = parseTagIdsParam(raw)
+    }
+  } else {
+    const repeatFields = formData.filter(part => part.name === 'tagIds' && part.data?.length)
+    if (repeatFields.length) {
+      uploadTagIds = parseTagIdsParam(
+        repeatFields.map(part => new TextDecoder().decode(part.data!).trim())
+      )
+    }
+  }
 
   // 兼容 image / file / files 字段名（图床脚本 / 通用客户端 / 网页多图）
   const fileParts = formData.filter(
@@ -83,7 +103,8 @@ export default defineEventHandler(async (event) => {
       bytes,
       filename: part.filename,
       source,
-      userId: uploadUserId
+      userId: uploadUserId,
+      tagIds: uploadTagIds
     })
 
     if ('error' in result) {

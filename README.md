@@ -31,9 +31,13 @@
 
 **main** 分支暂无公网演示；**cloudflare** 分支在线体验：[pic.roven.cc](https://pic.roven.cc)
 
-| API | 图库（详情） |
+| 上传 | 图库 |
 | :--: | :--: |
-| ![API](docs/screenshots/api.png) | ![图库](docs/screenshots/gallery.png) |
+| ![上传](docs/screenshots/upload.png) | ![图库](docs/screenshots/gallery.png) |
+
+| API | 标签管理 |
+| :--: | :------: |
+| ![API](docs/screenshots/api.png) | ![标签管理](docs/screenshots/tags.png) |
 
 | 存储 | 设置 |
 | :--: | :--: |
@@ -43,12 +47,17 @@
 | :--: | :--: |
 | ![首次设置](docs/screenshots/setup.png) | ![从备份恢复](docs/screenshots/setup-restore.png) |
 
+| 操作日志 |
+| :------: |
+| ![操作日志](docs/screenshots/logs.png) |
+
 ## 特性
 
 - **拖拽 / 点击 / Ctrl+V 粘贴**上传；服务端 WebP 压缩、Referer 防盗链
 - **多用户**：账号密码登录（滑块 / Turnstile / Cap 人机验证）、可选开放注册；普通用户仅见自己的图片
 - **多后端存储**：本地磁盘 + S3 兼容（R2 / COS / OSS / AWS）；混合直链 `proxy` / `public`
-- **图库**：浏览、搜索、按存储/来源筛选、网格/列表切换、批量删除；统计概览与来源分布；点击图片查看详情与多格式链接
+- **图库**：浏览、搜索、按存储/来源/标签筛选、网格/列表切换、批量删除与批量打标；统计概览与来源分布；点击图片查看详情与多格式链接
+- **标签**：每用户独立标签、彩色标记；上传后单张/批量打标；设置页管理（新建、改色、合并、删除）；API 支持 `tagIds` 与批量打标
 - **备份与迁移**：整站导出/恢复（`.phost.tar.gz`）、跨后端同步；setup 未初始化时可从备份恢复
 - **API 与 Twikoo**：全局 / 个人 Token；`POST /api/index.php` 兼容
 - **Docker 零配置**：首次访问 Web 引导创建管理员

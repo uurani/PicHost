@@ -20,6 +20,9 @@ export function useImageList() {
   const activeStorageBackend = ref('all')
   const activeContentType = ref('all')
   const activeUploadSource = ref('all')
+  const activeTagIds = ref<number[]>([])
+  const activeTagMode = ref<'or' | 'and'>('or')
+  const activeUntaggedOnly = ref(false)
   const storageBackendOptions = ref<Array<{ id: string, name: string }>>([])
 
   function storageQueryParams(): Record<string, string> {
@@ -37,6 +40,14 @@ export function useImageList() {
     const uploadSource = activeUploadSource.value.trim()
     if (uploadSource && uploadSource !== 'all') {
       params.uploadSource = uploadSource
+    }
+    if (activeUntaggedOnly.value) {
+      params.untagged = '1'
+    } else if (activeTagIds.value.length) {
+      params.tagIds = activeTagIds.value.join(',')
+      if (activeTagMode.value === 'and' && activeTagIds.value.length > 1) {
+        params.tagMode = 'and'
+      }
     }
     return params
   }
@@ -181,12 +192,48 @@ export function useImageList() {
     }
   }
 
+  async function setActiveTagFilter(options: {
+    tagIds?: number[]
+    tagMode?: 'or' | 'and'
+    untaggedOnly?: boolean
+  }) {
+    if (options.tagIds !== undefined) {
+      activeTagIds.value = [...options.tagIds]
+    }
+    if (options.tagMode !== undefined) {
+      activeTagMode.value = options.tagMode
+    }
+    if (options.untaggedOnly !== undefined) {
+      activeUntaggedOnly.value = options.untaggedOnly
+    }
+    page.value = 1
+    if (activeSearch.value) {
+      await Promise.all([fetchSearch(1), fetchTotal()])
+    } else {
+      await Promise.all([fetchList(1), fetchTotal()])
+    }
+  }
+
+  async function toggleTagFilter(tagId: number) {
+    const next = new Set(activeTagIds.value)
+    activeUntaggedOnly.value = false
+    if (next.has(tagId)) {
+      next.delete(tagId)
+    } else {
+      next.add(tagId)
+    }
+    await setActiveTagFilter({ tagIds: [...next] })
+  }
+
   async function resetFilters() {
     searchQuery.value = ''
     activeSearch.value = ''
     activeStorageBackend.value = 'all'
     activeContentType.value = 'all'
     activeUploadSource.value = 'all'
+    activeTagIds.value = []
+    activeTagMode.value = 'or'
+    activeUntaggedOnly.value = false
     page.value = 1
     await Promise.all([fetchList(1), fetchTotal()])
   }
@@ -278,6 +325,12 @@ export function useImageList() {
     return t('stats.summaryTotal', { total: count })
   })
 
+  function updateItemTags(key: string, tags: ImageItem['tags']) {
+    items.value = items.value.map(item =>
+      item.key === key ? { ...item, tags } : item
+    )
+  }
+
   return {
     items,
     page,
@@ -288,6 +341,9 @@ export function useImageList() {
     activeStorageBackend,
     activeContentType,
     activeUploadSource,
+    activeTagIds,
+    activeTagMode,
+    activeUntaggedOnly,
     storageBackendOptions,
     searchQuery,
     activeSearch,
@@ -300,12 +356,16 @@ export function useImageList() {
     setActiveStorageBackend,
     setActiveContentType,
     setActiveUploadSource,
+    setActiveTagFilter,
+    toggleTagFilter,
     resetFilters,
     loadStorageBackendOptions,
     submitSearch,
     goToPage,
     setPageSize,
     prependItems,
-    removeItems
+    removeItems,
+    updateItemTags,
+    listQueryParams
   }
 }

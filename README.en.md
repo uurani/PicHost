@@ -31,9 +31,13 @@
 
 **main** has no public demo. **cloudflare** branch live demo: [pic.roven.cc](https://pic.roven.cc)
 
-| API | Gallery (detail) |
-| :--: | :--------------: |
-| ![API](docs/screenshots/api.png) | ![Gallery](docs/screenshots/gallery.png) |
+| Upload | Gallery |
+| :----: | :-----: |
+| ![Upload](docs/screenshots/upload.png) | ![Gallery](docs/screenshots/gallery.png) |
+
+| API | Tag management |
+| :-: | :------------: |
+| ![API](docs/screenshots/api.png) | ![Tags](docs/screenshots/tags.png) |
 
 | Storage | Settings |
 | :-----: | :-------: |
@@ -43,12 +47,17 @@
 | :--------------: | :-----------------: |
 | ![Setup](docs/screenshots/setup.png) | ![Setup restore](docs/screenshots/setup-restore.png) |
 
+| Activity log |
+| :----------: |
+| ![Activity log](docs/screenshots/logs.png) |
+
 ## Features
 
 - **Drag, click, or Ctrl+V paste** — server-side WebP, Referer hotlink protection
 - **Multi-user** — login with slider, Turnstile, or Cap verification; optional registration; users see only their images
 - **Multi-backend storage** — local disk + S3-compatible (R2 / COS / OSS / AWS); hybrid `proxy` / `public` URLs
-- **Gallery** — browse, search, filter by storage/source, grid/list views, batch delete; stats overview and source breakdown; image detail modal with link formats
+- **Gallery** — browse, search, filter by storage/source/tags, grid/list views, batch delete and batch tagging; stats overview and source breakdown; image detail modal with link formats
+- **Tags** — per-user colored tags; tag on upload (single or batch); manage in Settings (create, recolor, merge, delete); API supports `tagIds` and batch tagging
 - **Backup & migration** — full-site export/restore (`.phost.tar.gz`), cross-backend sync; restore from backup on uninitialized `/setup`
 - **API & Twikoo** — global / per-user tokens; `POST /api/index.php` compatible
 - **Zero-config Docker** — first-run web wizard, no secrets upfront

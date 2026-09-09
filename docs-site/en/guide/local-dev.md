@@ -52,4 +52,4 @@ npm run docs:build
 npm run docs:preview
 ```
 
-Sources live in `docs-site/`; screenshot sources are in `docs/screenshots/` (including `login.png`, `setup.png`, `setup-restore.png`, etc.), copied to `docs-site/public/screenshots/` before build. Live docs: <https://o96u.github.io/PicHost/>
+Sources live in `docs-site/`; screenshot sources are in `docs/screenshots/` (including `upload.png`, `gallery.png`, `tags.png`, `api.png`, `storage.png`, `settings.png`, `logs.png`, `setup.png`, etc.), copied to `docs-site/public/screenshots/` before build. Live docs: <https://o96u.github.io/PicHost/>

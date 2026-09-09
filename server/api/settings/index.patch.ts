@@ -1,4 +1,5 @@
 import { requireAdminAuth } from '../../utils/access'
+import { logActivity } from '../../utils/activity-log'
 import { createApiError } from '../../utils/api-error'
 import {
   getSetting,
@@ -52,7 +53,7 @@ interface SettingsPatchBody {
 }
 
 export default defineEventHandler(async (event) => {
-  await requireAdminAuth(event)
+  const user = await requireAdminAuth(event)
 
   const body = await readBody<SettingsPatchBody>(event).catch(
     (): SettingsPatchBody => ({})
@@ -247,6 +248,14 @@ export default defineEventHandler(async (event) => {
   if (body.capSecret !== undefined) {
     setSetting(SETTINGS_CAP_SECRET, nextCapSecret)
   }
+
+  logActivity(event, {
+    action: 'settings',
+    key: 'settings/system',
+    originalName: '系统设置',
+    userId: user.id,
+    source: 'admin'
+  })
 
   return getSettingsPayload(event)
 })

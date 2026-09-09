@@ -12,15 +12,27 @@
 
 ## 截图预览
 
-**main** 分支暂无公网演示，以下为当前产品界面（v1.3.0+）。
+**main** 分支暂无公网演示，以下为当前产品界面（v1.4.0+）。
 
-| API | 图库（详情） |
+| 上传 | 批量打标 |
 | :-: | :-: |
-| ![API](/screenshots/api.png) | ![图库](/screenshots/gallery.png) |
+| ![上传](/screenshots/upload.png) | ![批量打标](/screenshots/tags-batch.png) |
 
-| 存储管理 | 设置与偏好 |
-| :------: | :--------: |
-| ![存储管理](/screenshots/storage.png) | ![设置与偏好](/screenshots/settings.png) |
+| 上传结果（含标签） | API |
+| :----------------: | :-: |
+| ![上传结果](/screenshots/upload-tags.jpg) | ![API](/screenshots/api.png) |
+
+| 图库（网格） | 图库（列表） |
+| :----------: | :----------: |
+| ![图库网格](/screenshots/gallery.png) | ![图库列表](/screenshots/gallery-list.png) |
+
+| 图片详情 | 标签管理 |
+| :------: | :------: |
+| ![图片详情](/screenshots/gallery-detail.png) | ![标签管理](/screenshots/tags.png) |
+
+| 存储管理 | 基础设置 |
+| :------: | :------: |
+| ![存储管理](/screenshots/storage.png) | ![基础设置](/screenshots/settings.png) |
 
 | 首次设置 | 从备份恢复 |
 | :------: | :--------: |

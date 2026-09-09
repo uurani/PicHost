@@ -1,5 +1,6 @@
-export type LogAction = 'upload' | 'delete'
-export type LogSource = 'web' | 'api'
+export type LogAction = 'upload' | 'delete' | 'login' | 'edit' | 'settings' | 'tags'
+export type LogSource = 'web' | 'api' | 'admin'
+export type LogStatus = 'success' | 'failure'
 
 export interface ActivityLogStorage {
   id: string
@@ -18,6 +19,8 @@ export interface ActivityLogItem {
   userId: number | null
   username: string | null
   storage: ActivityLogStorage | null
+  ipAddress: string | null
+  status: LogStatus
   createdAt: string
 }
 

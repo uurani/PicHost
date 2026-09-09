@@ -12,11 +12,23 @@ Welcome to the PicHost user guide. This site is the single source of truth; the 
 
 ## Screenshots
 
-**main** has no public demo. Below are current product screenshots (v1.3.0+).
+**main** has no public demo. Below are current product screenshots (v1.4.0+).
 
-| API | Gallery (detail) |
-| :-: | :--------------: |
-| ![API](/screenshots/api.png) | ![Gallery](/screenshots/gallery.png) |
+| Upload | Batch tagging |
+| :----: | :-----------: |
+| ![Upload](/screenshots/upload.png) | ![Batch tagging](/screenshots/tags-batch.png) |
+
+| Upload results (tagged) | API |
+| :---------------------: | :-: |
+| ![Upload results](/screenshots/upload-tags.jpg) | ![API](/screenshots/api.png) |
+
+| Gallery (grid) | Gallery (list) |
+| :------------: | :------------: |
+| ![Gallery grid](/screenshots/gallery.png) | ![Gallery list](/screenshots/gallery-list.png) |
+
+| Image detail | Tag management |
+| :----------: | :------------: |
+| ![Image detail](/screenshots/gallery-detail.png) | ![Tag management](/screenshots/tags.png) |
 
 | Storage | Settings |
 | :-----: | :-------: |

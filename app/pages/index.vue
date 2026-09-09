@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { ImageItem } from '~/types/image'
+import type { ImageItem, ImageTag } from '~/types/image'
+import { buildImageBbcode } from '~/utils/image-display'
 
 const { uploading, progressItems, uploadFiles } = useImageUpload()
 
@@ -9,6 +10,9 @@ const {
   loadPreferences
 } = useUploadPreferences()
 
+const { items: tagItems, fetchTags, batchUpdateTags } = useTags()
+const { recordRecent } = useRecentTags()
+
 const { isChecking, isAuthenticated, checkSession, handleAuthError, fetchStatus } = useAuth()
 const toast = useToast()
 const { t } = useI18n()
@@ -17,6 +21,9 @@ const deletingKeys = ref<Set<string>>(new Set())
 const emptySelection = ref(new Set<string>())
 const previewOpen = ref(false)
 const previewImage = ref<ImageItem | null>(null)
+const tagModalOpen = ref(false)
+const tagModalImage = ref<ImageItem | null>(null)
+const batchTagOpen = ref(false)
 
 const showProgress = computed(
   () =>
@@ -47,7 +54,7 @@ onMounted(async () => {
     await checkSession()
   }
   if (isAuthenticated.value) {
-    await loadPage()
+    await Promise.all([loadPage(), fetchTags()])
   }
 })
 
@@ -66,6 +73,8 @@ function copyFormatLabel() {
       return t('copy.url')
     case 'html':
       return t('copy.html')
+    case 'bbcode':
+      return t('copy.bbcode')
     default:
       return t('copy.markdown')
   }
@@ -108,7 +117,9 @@ async function handleUpload(files: File[]) {
             ? first.url
             : copyFormat.value === 'html'
               ? first.html
-              : first.markdown
+              : copyFormat.value === 'bbcode'
+                ? buildImageBbcode(first.url)
+                : first.markdown
         if (text) await copyUploadLink(text)
       }
     }
@@ -147,6 +158,50 @@ function openPreview(image: ImageItem) {
 function requestPreviewDelete() {
   if (!previewImage.value) return
   void handleDelete(previewImage.value.key)
+}
+
+function openTagModal(image: ImageItem) {
+  tagModalImage.value = image
+  tagModalOpen.value = true
+}
+
+function updateSessionItemTags(key: string, tags: ImageItem['tags']) {
+  sessionItems.value = sessionItems.value.map(item =>
+    item.key === key ? { ...item, tags } : item
+  )
+  if (previewImage.value?.key === key) {
+    previewImage.value = { ...previewImage.value, tags }
+  }
+  if (tagModalImage.value?.key === key) {
+    tagModalImage.value = { ...tagModalImage.value, tags }
+  }
+}
+
+function handleTagSaved(tags: ImageTag[]) {
+  if (!tagModalImage.value) return
+  updateSessionItemTags(tagModalImage.value.key, tags)
+}
+
+async function confirmBatchTags(tagIds: number[]) {
+  const keys = sessionItems.value.map(item => item.key)
+  if (!keys.length || !tagIds.length) return
+
+  try {
+    await batchUpdateTags(keys, tagIds, 'add')
+    batchTagOpen.value = false
+    recordRecent(tagIds)
+    toast.add({ title: t('tags.batchSuccess'), color: 'success' })
+    await fetchTags(true)
+    const addedTags = tagItems.value.filter(tag => tagIds.includes(tag.id))
+    sessionItems.value = sessionItems.value.map((item) => {
+      const merged = new Map((item.tags ?? []).map(tag => [tag.id, tag]))
+      for (const tag of addedTags) merged.set(tag.id, tag)
+      return { ...item, tags: [...merged.values()] }
+    })
+  } catch (error: unknown) {
+    handleAuthError(error)
+    toast.add({ title: t('tags.batchFailed'), color: 'error' })
+  }
 }
 </script>
 
@@ -189,6 +244,14 @@ function requestPreviewDelete() {
             {{ t('upload.sessionTitle') }}
             <span class="ml-1 text-sm font-normal text-muted">({{ sessionItems.length }})</span>
           </h2>
+          <UButton
+            icon="i-lucide-tags"
+            variant="outline"
+            color="primary"
+            size="sm"
+            :label="t('tags.batchTagAll')"
+            @click="() => { batchTagOpen = true }"
+          />
         </div>
 
         <ImageGrid
@@ -196,9 +259,13 @@ function requestPreviewDelete() {
           :selected-keys="emptySelection"
           :selectable="false"
           :show-key="false"
+          :allow-delete="true"
+          show-tag-action
           :empty-text="t('upload.sessionEmpty')"
           @update:selected-keys="() => {}"
           @preview="openPreview"
+          @delete="(image) => handleDelete(image.key)"
+          @edit-tags="openTagModal"
         />
       </section>
 
@@ -208,6 +275,21 @@ function requestPreviewDelete() {
         :deleting="previewImage ? deletingKeys.has(previewImage.key) : false"
         :allow-delete="true"
         @delete="requestPreviewDelete"
+      />
+
+      <ImageTagModal
+        v-model:open="tagModalOpen"
+        :image="tagModalImage"
+        :tags="tagItems"
+        @saved="handleTagSaved"
+      />
+
+      <BatchTagModal
+        v-model:open="batchTagOpen"
+        :tags="tagItems"
+        :selected-count="sessionItems.length"
+        add-only
+        @confirm="(tagIds) => confirmBatchTags(tagIds)"
       />
     </AppShell>
   </div>

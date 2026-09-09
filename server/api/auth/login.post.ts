@@ -12,6 +12,7 @@ import {
 import { findUserByUsername } from '../../utils/db'
 import { getAdminSecret } from '../../utils/env'
 import { verifyLoginVerification, type VerificationBody } from '../../utils/login-verification'
+import { logActivity } from '../../utils/activity-log'
 import { clientIp, logInfo, logWarn } from '../../utils/logger'
 
 interface LoginBody extends VerificationBody {
@@ -81,6 +82,13 @@ export default defineEventHandler(async (event) => {
 
   await createSession(event, user.id)
   logInfo('login success', { ip, username: user.username })
+  logActivity(event, {
+    action: 'login',
+    key: 'auth/login',
+    originalName: user.username,
+    userId: user.id,
+    source: 'web'
+  })
 
   return {
     success: true,

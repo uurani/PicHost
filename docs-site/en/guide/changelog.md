@@ -4,6 +4,24 @@ Version history and notable changes. The full log is also in the repo root [CHAN
 
 ---
 
+## [1.4.0] — 2026-09-09
+
+### Added
+
+- **Tags**: per-user colored tags; Settings management; batch tagging on upload/gallery; OR / AND gallery filters
+- **Activity log**: login, delete, settings, tag operations; date and user filters
+- **API**: tag and tagging endpoints; upload `tagIds`; list/stats tag filters
+
+### Docs
+
+- Screenshots and README updated for v1.4 UI
+
+## [1.3.0] — 2026-09-07
+
+### Added
+
+- **Site backup / restore / cross-backend sync** with job center; CLI `backup-export`, `backup-restore`, `storage-sync`
+
 ## [1.2.8] — 2026-09-04
 
 ### Improved

@@ -37,7 +37,9 @@ See `docker-compose.yml` in the repository.
    - **Create admin** — username, password, optional registration and dual-domain options.
    - **Restore backup** — upload a `.phost.tar.gz` full-site package (replaces current data; re-enter cloud storage secrets after restore).
 3. (Optional) Configure site URL, image URL, Referer rules — see [Environment variables](./configuration.md) and [Dual-domain separation](./domain-separation.md).
-4. Upload from the home page; use the top nav for **Gallery**, **Storage** (admin), **Settings**, and **API**.
+4. Upload from the home page via **drag-and-drop, file picker, or Ctrl+V**; copy direct/Markdown/HTML/BBCode links from the results panel and use **batch tagging**. Top nav: **Gallery**, **Storage** (admin), **Settings**, **API**.
+
+![Upload](/screenshots/upload.png)
 
 | Create admin | Restore from backup |
 | :----------: | :-----------------: |

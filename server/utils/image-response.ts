@@ -3,12 +3,25 @@ import type { ImageItem } from '~/types/image'
 import type { LogSource } from './db'
 import type { AllowedMimeType } from './constants'
 import type { StoredImage } from './storage'
+import type { TagItem } from './tags'
+import { getTagsForImageKeys } from './tags'
 import { getImageBaseUrl, isHideFolderInUrl } from './env'
 import { toPublicImagePath } from './image-public-path'
 import { getActiveBackendRow } from './storage/resolver'
 import { getStorageBackendRow, getStorageBackendFromEnv } from './storage-backends'
 import type { StorageBackendType, StorageBackendRow } from './storage/types'
 import { buildObjectKey, parseS3Config } from './storage/s3'
+
+export function attachTagsToImageItems(items: ImageItem[]): ImageItem[] {
+  if (!items.length) return items
+  const tagMap = getTagsForImageKeys(items.map(item => item.key))
+  return items.map(item => ({
+    ...item,
+    tags: tagMap.get(item.key) ?? []
+  }))
+}
+
+export type { TagItem }
 
 export function resolveImageOwner(
   userId: number | null | undefined,
@@ -72,7 +85,7 @@ export function mapStoredImageToItem(
     ...item,
     ...(owner ? { owner } : {}),
     ...(storage ? { storage } : {}),
-    ...(uploadSource ? { uploadSource } : {})
+    ...(uploadSource === 'web' || uploadSource === 'api' ? { uploadSource } : {})
   }
 }
 
