@@ -34,7 +34,8 @@ describe('shouldBlockImageHostRequest', () => {
       imageHost,
       requestHost: imageHost,
       method: 'GET',
-      pathname: '/settings'
+      pathname: '/settings',
+      hideFolder: false
     })).toBe(true)
   })
 
@@ -45,7 +46,8 @@ describe('shouldBlockImageHostRequest', () => {
       imageHost,
       requestHost: imageHost,
       method: 'GET',
-      pathname: '/images/2026/08/demo.webp'
+      pathname: '/images/2026/08/demo.webp',
+      hideFolder: false
     })).toBe(false)
   })
 
@@ -93,7 +95,8 @@ describe('shouldBlockSiteHostImageRequest', () => {
       siteHost,
       requestHost: siteHost,
       method: 'GET',
-      pathname: '/images/2026/08/demo.webp'
+      pathname: '/images/2026/08/demo.webp',
+      hideFolder: false
     })).toBe(true)
   })
 
