@@ -95,15 +95,17 @@ describe('activity log smoke', () => {
     await new Promise(resolve => setTimeout(resolve, 50))
   })
 
-  it('opens the project data database without throwing', async () => {
-    const projectData = join(process.cwd(), 'data')
-    process.env.DATA_DIR = projectData
+  it('lists activity logs on a fresh database without throwing', async () => {
+    useTempDataDir()
 
     const { getDb, listActivityLogs, closeDb } = await loadDbModule()
     getDb()
+    const { ensureStorageSchema } = await import('./storage-backends')
+    ensureStorageSchema()
+
     const result = listActivityLogs({ limit: 5, page: 1 })
-    expect(result.page).toBeGreaterThan(0)
-    expect(Array.isArray(result.items)).toBe(true)
+    expect(result.page).toBe(1)
+    expect(result.items).toEqual([])
     closeDb()
     await new Promise(resolve => setTimeout(resolve, 50))
   })
